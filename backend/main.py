@@ -64,7 +64,7 @@ GENRE_TAG_MAP = {
 }
 
 GENRE_PROFILE_TEXT = {
-    'puzzle':     'puzzle logic brain teaser point and click hidden object',
+    'puzzle':     'puzzle adventure atmospheric mystery exploration cooperative escape room environmental puzzle first-person narrative puzzle immersive',
     'rpg':        'role-playing RPG character progression leveling stats dungeon loot',
     'strategy':   'strategy planning resource management city building turn-based real-time',
     'simulation': 'simulation management tycoon farming life economy',
