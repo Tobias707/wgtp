@@ -14,12 +14,14 @@ Game recommendation website. Users answer 10-question quiz about gaming preferen
 - [x] Data prep: 1942 games with rich_description + 384-dim embeddings
 - [x] Backend API: FastAPI /api/recommend endpoint (models.py, main.py, requirements.txt)
 - [x] Frontend: wgtp.html integrated with API client
+- [x] Test backend locally (health + /api/recommend verified 2026-05-03)
+- [x] Deploy backend to Railway: https://wgtp-production.up.railway.app
+- [x] Update wgtp.html API URL to production
+- [x] Algorithm tuning round 1 (2026-05-03) — see Algorithm Changelog below
 
 ### ⏳ Remaining
-- [x] Test backend locally (health + /api/recommend verified 2026-05-03)
-- [ ] Deploy backend to production (Render/Railway)
-- [ ] Update wgtp.html API URL to production
-- [ ] End-to-end testing with 5+ different user profiles
+- [ ] Continue algorithm tuning based on real recommendation feedback
+- [ ] Test remaining edge-case profiles (impossible combo, popularity extremes)
 
 ---
 
@@ -86,16 +88,22 @@ Each game in `games_data.json` has:
 ```
 
 **Process:**
-1. Build user profile text from quiz answers
-2. Embed text using sentence-transformer (same model used for games)
-3. Compute cosine similarity: user_vector vs all 1942 game_embeddings (~100-200ms)
-4. Apply soft filters (post-ranking):
-   - Budget: hard filter (exclude if price > budget)
-   - Disliked games: -100 penalty
-   - Platform mismatch: -70 penalty
-   - Players mismatch: -35 penalty
-5. Mark hidden gems (quiz_popularity ≤ 6 AND review_score ≥ 88)
-6. Return top 10 games
+1. Build user profile text from quiz answers (with semantic keyword expansion)
+2. Inject loved game steam_tags into profile text as tag anchor
+3. Embed text using sentence-transformer (same model used for games)
+4. Blend embedding: 65% profile vector + 35% average of loved game vectors (re-normalized)
+5. Hard filters (skip game entirely):
+   - Budget: exclude if price > budget
+   - Quality: exclude if review_score < 75
+   - Adult content: exclude if tagged Sexual Content / NSFW / Adult Only / Hentai / Nudity
+6. Compute cosine similarity: user_vector vs remaining game_embeddings
+7. Apply soft penalties (post-similarity):
+   - Genre mismatch: -80 (if user selected genres but game has none matching)
+   - Disliked games: -100
+   - Platform mismatch: -70
+   - Players mismatch: -35
+8. Mark hidden gems (quiz_popularity ≤ 6 AND review_score ≥ 88)
+9. Return top 10 games (prioritize up to 3 hidden gems)
 
 **Response:**
 ```json
@@ -199,6 +207,45 @@ Test with 5+ different quiz profiles:
 - **Quiz_players soft filter only** — simplest/cleanest categorical filter
 - **10 results per request** — reasonable size
 - **Hidden gems discovery** — surface good low-popularity games
+- **No tag-based difficulty penalty** — Steam difficulty tags too sparse for reliable coverage; use semantic expansion instead
+
+---
+
+## Algorithm Changelog
+
+### Round 1 — 2026-05-03
+
+**Problems found via 4 test profiles:**
+
+| Profile | Issue | Root Cause |
+|---|---|---|
+| RPG+adventure, Stardew loved, easy | Stardew Valley ranked #9 | Proper noun "Stardew Valley" has no semantic weight; embedding blind to loved games |
+| RPG+adventure, easy | Only Up #3 (Parkour/Difficult, 73% review) | Broad tags ("Adventure","Rogue-like") escaped genre penalty; generic embedding near many vectors |
+| RPG+adventure, easy | Changed #7 (Sexual Content/Horror) | Had "Adventure"+"RPG" tags so passed genre filter; no content filter existed |
+| Roguelike, Hades loved | Only Up #6 again | Same root cause: "Rogue-like" tag + low review score not filtered |
+
+**Fixes applied (commits `283a24f` → `02ec279`):**
+
+1. **Loved game tag injection** (`283a24f`) — Inject loved game's actual steam_tags into profile text so embedding anchors to their vocabulary. "Loved: Stardew Valley" → "Similar to games tagged: Farming Sim, Relaxing, RPG, ..."
+
+2. **Loved game embedding blend** (`283a24f`) — 65% profile vector + 35% average of loved game vectors. Stardew Valley jumped from #9 → #1.
+
+3. **Difficulty semantic expansion** (`6d434c5`) — "easy" → "casual easy relaxing accessible beginner-friendly low stakes cozy chill" before embedding. Raw enum value had near-zero semantic weight.
+
+4. **Session length + story expansion** (`1b27dee`) — Same treatment: "long" → "long sessions immersive deep extended playtime epic adventure hours"; "core" → "story-driven narrative rich deep lore character development cinematic plot-driven".
+
+5. **Review score hard filter** (`07a010e`) — Skip games with review_score < 75. Removes floaters like Only Up (73%) that score high via generic embeddings.
+
+6. **Adult content hard filter** (`07a010e`) — Skip games tagged Sexual Content / NSFW / Adult Only Content / Hentai / Nudity. Removes Changed and similar from all profiles.
+
+**Results after fixes (profile: RPG+adventure, Stardew loved, easy, story=core, long):**
+```
+1. Stardew Valley       83.6  ✅
+2. Hero's Adventure     63.5  ✅ (RPG/adventure)
+3. Sun Haven            62.7  ✅ (Farming Sim + RPG)
+4. My Time at Portia    62.0  ✅ (Farming Sim + RPG + cozy)
+(Only Up and Changed no longer appear)
+```
 
 ---
 
@@ -206,4 +253,4 @@ Test with 5+ different quiz profiles:
 
 Email: tobias.l.ulmer@gmail.com
 
-*Last updated: 2026-05-03 — implementation complete, ready for deployment testing*
+*Last updated: 2026-05-03 — algorithm tuning round 1 complete, continuing feedback loop*
