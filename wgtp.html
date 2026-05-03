@@ -171,9 +171,12 @@
   <div id="quiz-root"></div>
 </div>
 
-<footer><span class="blink"></span>v0.2 · powered by algorithm</footer>
+<footer><span class="blink"></span><span id="version-label"></span></footer>
 
 <script>
+const VERSION = '0.3 · 2026-05-03';
+document.getElementById('version-label').textContent = VERSION + ' · powered by algorithm';
+
 let GAMES = [];
 
 // ── Recommendation engine ────────────────────────────────────────────────────
