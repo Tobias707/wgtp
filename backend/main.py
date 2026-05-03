@@ -84,6 +84,18 @@ DIFFICULTY_PROFILE_TEXT = {
     'hard':   'challenging hard difficult punishing demanding precise unforgiving souls-like',
 }
 
+SESSION_LENGTH_PROFILE_TEXT = {
+    'short':  'quick sessions bite-sized short play time casual pick up and play',
+    'medium': 'medium sessions one to two hours moderate playtime',
+    'long':   'long sessions immersive deep extended playtime epic adventure hours',
+}
+
+STORY_IMPORTANCE_PROFILE_TEXT = {
+    'core':       'story-driven narrative rich deep lore character development cinematic plot-driven',
+    'nice':       'light story some narrative context optional lore',
+    'irrelevant': 'gameplay-focused no story minimal narrative pure mechanics action arcade',
+}
+
 
 def get_genre_tag_set(genres: list) -> set:
     tags = set()
@@ -132,14 +144,16 @@ def build_user_profile_text(quiz: QuizRequest) -> str:
         loved_tag_anchor = f"Similar to games tagged: {', '.join(unique_tags)}. "
 
     difficulty_expansion = DIFFICULTY_PROFILE_TEXT.get(quiz.difficulty, quiz.difficulty)
+    session_expansion = SESSION_LENGTH_PROFILE_TEXT.get(quiz.session_length, quiz.session_length)
+    story_expansion = STORY_IMPORTANCE_PROFILE_TEXT.get(quiz.story_importance, quiz.story_importance)
 
     text = (
         f"Looking for: {genres_str}. "
         f"{genre_expansions}. "
         f"{quiz.players} player(s). "
         f"{difficulty_expansion}. "
-        f"{quiz.story_importance} story. "
-        f"{quiz.session_length} play sessions. "
+        f"{story_expansion}. "
+        f"{session_expansion}. "
         f"Popularity preference: {quiz.popularity}/10. "
         f"Budget: {quiz.budget}. "
         f"Loved games: {loved_str}. "
