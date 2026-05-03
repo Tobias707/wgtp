@@ -96,6 +96,8 @@ STORY_IMPORTANCE_PROFILE_TEXT = {
     'irrelevant': 'gameplay-focused no story minimal narrative pure mechanics action arcade',
 }
 
+ADULT_TAGS = {"sexual content", "nsfw", "adult only content", "hentai", "nudity"}
+
 
 def get_genre_tag_set(genres: list) -> set:
     tags = set()
@@ -195,8 +197,6 @@ def recommend(quiz: QuizRequest):
         user_genre_tags = get_genre_tag_set(quiz.genres)
 
         scored_games = []
-
-        ADULT_TAGS = {"sexual content", "nsfw", "adult only content", "hentai", "nudity"}
 
         for game in games_list:
             # Hard filter: budget
