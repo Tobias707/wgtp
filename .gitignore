@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+games_data.backup*.json
+games_inline.tmp
+seen_appids.json
+.superpowers/
+*.log
+docs/superpowers/

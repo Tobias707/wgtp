@@ -1,0 +1,788 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>What Game to Play – Quiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0b;
+    --bg-elevated: #131316;
+    --bg-card: #18181c;
+    --border: #26262b;
+    --border-strong: #38383f;
+    --text: #ededed;
+    --text-muted: #8a8a92;
+    --text-dim: #5a5a62;
+    --accent: #c2ff3d;
+    --accent-dim: #c2ff3d22;
+    --danger: #ff5757;
+    --gem: #a78bfa;
+    --gem-dim: #a78bfa18;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Geist', -apple-system, system-ui, sans-serif;
+    font-weight: 400;
+    line-height: 1.5;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body {
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(194,255,61,0.06) 0%, transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(120,80,255,0.05) 0%, transparent 40%);
+    background-attachment: fixed;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.4;
+    z-index: 1;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .container { max-width: 720px; margin: 0 auto; padding: 48px 24px 120px; position: relative; z-index: 2; }
+
+  header { margin-bottom: 64px; }
+  .brand-mark { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-dim); }
+  .brand-mark::before { content: '◢'; color: var(--accent); margin-right: 8px; }
+  h1 { font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: clamp(38px,7vw,64px); line-height: 1.05; letter-spacing: -0.02em; margin-top: 8px; }
+  h1 em { font-style: italic; color: var(--accent); }
+  .subtitle { color: var(--text-muted); font-size: 15px; margin-top: 16px; max-width: 480px; }
+
+  .progress-wrap { margin: 48px 0 40px; }
+  .progress-meta { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 12px; }
+  .progress-meta .count { color: var(--text); }
+  .progress-bar { height: 2px; background: var(--border); overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.5s cubic-bezier(0.65,0,0.35,1); }
+
+  .question { animation: fadeUp 0.5s cubic-bezier(0.16,1,0.3,1); }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+  .q-number { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-dim); letter-spacing: 0.1em; margin-bottom: 16px; }
+  .q-title { font-family: 'Instrument Serif', serif; font-size: clamp(28px,4.5vw,38px); font-weight: 400; line-height: 1.15; letter-spacing: -0.01em; margin-bottom: 12px; }
+  .q-hint { color: var(--text-muted); font-size: 14px; margin-bottom: 32px; }
+
+  .options { display: grid; gap: 10px; grid-template-columns: 1fr; }
+  .options.two-col { grid-template-columns: repeat(2,1fr); }
+  @media (max-width: 480px) { .options.two-col { grid-template-columns: 1fr; } }
+
+  .option { background: var(--bg-card); border: 1px solid var(--border); color: var(--text); padding: 16px 20px; cursor: pointer; text-align: left; font: inherit; font-size: 15px; transition: all 0.18s ease; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .option:hover { border-color: var(--border-strong); background: var(--bg-elevated); transform: translateX(2px); }
+  .option.selected { border-color: var(--accent); background: var(--accent-dim); }
+  .option .check { width: 16px; height: 16px; border: 1px solid var(--border-strong); border-radius: 50%; flex-shrink: 0; position: relative; transition: all 0.18s ease; }
+  .option.selected .check { border-color: var(--accent); background: var(--accent); }
+  .option.selected .check::after { content: ''; position: absolute; inset: 3px; background: var(--bg); border-radius: 50%; }
+  .option.multi .check { border-radius: 3px; }
+  .option.multi.selected .check::after { inset: 0; background: transparent; border: solid var(--bg); border-width: 0 2px 2px 0; transform: rotate(45deg) translate(-1px,-2px); width: 5px; height: 9px; border-radius: 0; top: 2px; left: 5px; }
+
+  .textbox { width: 100%; background: var(--bg-card); border: 1px solid var(--border); color: var(--text); padding: 16px 20px; font: inherit; font-size: 15px; min-height: 110px; resize: vertical; transition: border-color 0.18s ease; }
+  .textbox:focus { outline: none; border-color: var(--accent); }
+  .textbox::placeholder { color: var(--text-dim); }
+
+  .slider-wrap { background: var(--bg-card); border: 1px solid var(--border); padding: 32px 24px 24px; }
+  .slider-labels { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: 20px; }
+  .slider-value { text-align: center; font-family: 'Instrument Serif', serif; font-size: 32px; color: var(--accent); margin-bottom: 16px; font-style: italic; }
+  input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 2px; background: var(--border-strong); outline: none; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; background: var(--accent); cursor: pointer; border-radius: 50%; border: 3px solid var(--bg); box-shadow: 0 0 0 1px var(--accent); }
+  input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; background: var(--accent); cursor: pointer; border-radius: 50%; border: 3px solid var(--bg); box-shadow: 0 0 0 1px var(--accent); }
+
+  .nav { display: flex; justify-content: space-between; align-items: center; margin-top: 40px; gap: 12px; }
+  .btn { background: transparent; border: 1px solid var(--border-strong); color: var(--text); padding: 14px 28px; cursor: pointer; font: inherit; font-size: 14px; letter-spacing: 0.02em; transition: all 0.18s ease; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; }
+  .btn:hover:not(:disabled) { border-color: var(--text); background: var(--bg-elevated); }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+  .btn-primary:hover:not(:disabled) { background: #d4ff66; border-color: #d4ff66; transform: translateX(2px); }
+  .btn-primary::after { content: '→'; margin-left: 8px; display: inline-block; transition: transform 0.18s ease; }
+  .btn-primary:hover::after { transform: translateX(4px); }
+
+  /* ── Results ── */
+  .results { animation: fadeUp 0.6s cubic-bezier(0.16,1,0.3,1); }
+  .results-title { font-family: 'Instrument Serif', serif; font-size: clamp(32px,5vw,52px); line-height: 1.05; margin-bottom: 12px; font-weight: 400; }
+  .results-title em { font-style: italic; color: var(--accent); }
+  .results-sub { color: var(--text-muted); font-size: 15px; margin-bottom: 40px; }
+
+  .section-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .game-card { background: var(--bg-card); border: 1px solid var(--border); padding: 24px; margin-bottom: 10px; transition: border-color 0.18s ease; }
+  .game-card:hover { border-color: var(--border-strong); }
+  .game-card.gem { border-color: rgba(167,139,250,0.2); }
+  .game-card.gem:hover { border-color: var(--gem); }
+
+  .card-top { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 14px; }
+  .card-rank { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); letter-spacing: 0.1em; padding-top: 5px; flex-shrink: 0; min-width: 22px; }
+  .card-main { flex: 1; min-width: 0; }
+  .card-name { font-family: 'Instrument Serif', serif; font-size: 22px; font-weight: 400; line-height: 1.2; margin-bottom: 8px; }
+  .card-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  .badge { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.05em; padding: 3px 8px; border: 1px solid; white-space: nowrap; }
+  .badge-score-high { color: var(--accent); border-color: rgba(194,255,61,0.3); background: var(--accent-dim); }
+  .badge-score-mid { color: #fbbf24; border-color: rgba(251,191,36,0.25); background: rgba(251,191,36,0.07); }
+  .badge-score-low { color: var(--text-muted); border-color: var(--border); }
+  .badge-free { color: var(--accent); border-color: rgba(194,255,61,0.3); background: var(--accent-dim); }
+  .badge-price { color: var(--text-muted); border-color: var(--border); }
+  .badge-gem { color: var(--gem); border-color: rgba(167,139,250,0.3); background: var(--gem-dim); }
+
+  .card-desc { color: var(--text-muted); font-size: 14px; line-height: 1.65; margin-bottom: 12px; }
+  .card-reasons { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .reason-tag { font-size: 12px; color: var(--text-dim); background: var(--bg-elevated); border: 1px solid var(--border); padding: 3px 10px; font-family: 'JetBrains Mono', monospace; }
+
+  .steam-link { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); text-decoration: none; border-bottom: 1px solid var(--border); padding-bottom: 1px; transition: color 0.18s, border-color 0.18s; }
+  .steam-link:hover { color: var(--accent); border-color: var(--accent); }
+
+  .gems-section { margin-top: 40px; }
+  .results-footer { margin-top: 48px; display: flex; gap: 12px; flex-wrap: wrap; }
+
+  .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 220px; gap: 20px; animation: fadeUp 0.4s ease; }
+  .spinner { width: 32px; height: 32px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; }
+
+  footer { position: fixed; bottom: 16px; left: 24px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; z-index: 3; }
+  footer .blink { display: inline-block; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; margin-right: 6px; animation: blink 2s infinite; vertical-align: middle; }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  @media (max-width: 600px) { .container { padding: 32px 20px 100px; } footer { left: 20px; bottom: 12px; } }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="brand">
+      <span class="brand-mark">What Game To Play</span>
+      <h1>Find your <em>next obsession</em>.</h1>
+      <p class="subtitle">10 Fragen. Kein Bullshit. Spiele, die wirklich zu dir passen.</p>
+    </div>
+  </header>
+  <div id="quiz-root"></div>
+</div>
+
+<footer><span class="blink"></span>v0.2 · powered by algorithm</footer>
+
+<script>
+let GAMES = [];
+
+// ── Recommendation engine ────────────────────────────────────────────────────
+const STORY_ORDER = ['irrelevant', 'nice', 'core'];
+const DIFFICULTY_ORDER = ['chill', 'medium', 'hard'];
+const SESSION_ORDER = ['short', 'medium', 'long'];
+const BUDGET_MAX = { free: 0, '<5': 5, '<10': 10, '<30': 30 };
+
+const GENRE_TAG_MAP = {
+  puzzle:    new Set(['puzzle','logic','physics puzzle','point & click','hidden object','match 3','word game','escape room','sokoban','nonogram','tile-matching']),
+  rpg:       new Set(['rpg','action rpg','crpg','dungeon crawler','jrpg','turn-based rpg','loot']),
+  strategy:  new Set(['strategy','4x','grand strategy','city builder','rts','tower defense','turn-based strategy','wargame','card game','card battler','deckbuilding','deckbuilder']),
+  simulation:new Set(['simulation','farming sim','life sim','flight','tycoon','management','economy','cooking']),
+  roguelike: new Set(['rogue-like','rogue-lite','action roguelike','roguelite','roguelike']),
+  platformer:new Set(['platformer','2d platformer','metroidvania','runner','auto-runner','precision platformer']),
+  horror:    new Set(['horror','survival horror','psychological horror']),
+  sports:    new Set(['sports','racing','football','soccer','baseball','basketball','skating','golf']),
+  sandbox:   new Set(['sandbox','open world survival craft','building','crafting','survival','base building']),
+  shooter:   new Set(['fps','first-person shooter','third-person shooter','hero shooter',"shoot 'em up",'bullet hell','twin stick shooter']),
+  adventure: new Set(['adventure','action-adventure','exploration','narrative','visual novel','walking simulator','interactive fiction']),
+  action:    new Set(['action',"beat 'em up",'fighting','brawler','hack and slash','martial arts']),
+};
+
+const STEAM_GENRES_TO_QUIZ = {
+  'RPG': 'rpg',
+  'Strategy': 'strategy',
+  'Simulation': 'simulation',
+  'Sports': 'sports',
+  'Racing': 'sports',
+  'Adventure': 'adventure',
+  'Casual': 'puzzle',
+  'Action': 'action',
+  'Massively Multiplayer': 'action',
+};
+
+function getEffectiveGenres(game) {
+  const genres = new Set(game.quiz_genres);
+  for (const sg of (game.steam_genres ?? [])) {
+    const qg = STEAM_GENRES_TO_QUIZ[sg];
+    if (qg) genres.add(qg);
+  }
+  // Only use tag inference when tags are real text (not numeric)
+  const firstTag = game.steam_tags?.[0];
+  if (firstTag && !/^\d+$/.test(String(firstTag))) {
+    const tags = game.steam_tags.map(t => t.toLowerCase());
+    for (const [genre, keywords] of Object.entries(GENRE_TAG_MAP)) {
+      if (!genres.has(genre) && tags.some(t => keywords.has(t))) genres.add(genre);
+    }
+  }
+  return genres;
+}
+
+
+function priceOk(game, budget) {
+  if (!budget || budget === 'any') return true;
+  if (budget === 'free') return game.is_free;
+  const limit = BUDGET_MAX[budget] ?? Infinity;
+  return game.is_free || game.price_eur <= limit;
+}
+
+function findByName(name) {
+  const needle = name.toLowerCase().trim();
+  return GAMES.find(g => {
+    const h = g.name.toLowerCase();
+    return needle.includes(h) || h.includes(needle);
+  }) ?? null;
+}
+
+const _referenceCache = new Map();
+function getReference(name) {
+  if (!_referenceCache.has(name)) {
+    _referenceCache.set(name, findByName(name));
+  }
+  return _referenceCache.get(name);
+}
+
+function lovedBonus(game, lovedList) {
+  let bonus = 0;
+  const connections = [];
+  const gg = new Set(game.quiz_genres);
+  const gameSteamGenres = new Set((game.steam_genres ?? []).map(s => s.toLowerCase()));
+
+  for (const name of lovedList) {
+    const ref = getReference(name);
+    if (!ref) continue;
+
+    // Primary: quiz_genre overlap (all games)
+    const rg = new Set(ref.quiz_genres);
+    const genreOverlap = [...gg].filter(g => rg.has(g)).length;
+
+    // Secondary: steam_genres text overlap
+    const refSteamGenres = new Set((ref.steam_genres ?? []).map(s => s.toLowerCase()));
+    const steamGenreOverlap = [...gameSteamGenres].filter(sg => refSteamGenres.has(sg)).length;
+
+    // Tertiary: steam_tags only when BOTH have real text tags
+    let tagOverlap = 0;
+    const firstGameTag = game.steam_tags?.[0];
+    const firstRefTag = ref.steam_tags?.[0];
+    if (firstGameTag && firstRefTag &&
+        !/^\d+$/.test(String(firstGameTag)) && !/^\d+$/.test(String(firstRefTag))) {
+      const gt = new Set(game.steam_tags.map(t => t.toLowerCase()));
+      const rt = new Set(ref.steam_tags.map(t => t.toLowerCase()));
+      tagOverlap = [...gt].filter(t => rt.has(t)).length;
+    }
+
+    const pts = genreOverlap * 15 + steamGenreOverlap * 5 + tagOverlap * 2;
+    if (pts > 0) {
+      bonus += pts;
+      connections.push(ref.name);
+    }
+  }
+  return { bonus: Math.min(bonus, 60), connections };
+}
+
+function dislikedPenalty(game, dislikedList) {
+  let penalty = 0;
+  const gg = new Set(game.quiz_genres);
+
+  for (const name of dislikedList) {
+    const ref = getReference(name);
+    if (!ref) continue;
+
+    const rg = new Set(ref.quiz_genres);
+    const genreOverlap = [...gg].filter(g => rg.has(g)).length;
+
+    let tagOverlap = 0;
+    const firstGameTag = game.steam_tags?.[0];
+    const firstRefTag = ref.steam_tags?.[0];
+    if (firstGameTag && firstRefTag &&
+        !/^\d+$/.test(String(firstGameTag)) && !/^\d+$/.test(String(firstRefTag))) {
+      const gt = new Set(game.steam_tags.map(t => t.toLowerCase()));
+      const rt = new Set(ref.steam_tags.map(t => t.toLowerCase()));
+      tagOverlap = [...gt].filter(t => rt.has(t)).length;
+    }
+
+    penalty += genreOverlap * 20 + tagOverlap * 2;
+  }
+  return Math.min(penalty, 70);
+}
+
+function scoreGame(game, ans) {
+  // Budget is the only hard filter — user literally can't afford more
+  if (!priceOk(game, ans.budget)) return null;
+
+  if (game.is_software_tool) return null;
+
+  let score = 0; const details = {};
+
+  // Genre: dominant factor. getEffectiveGenres augments quiz_genres with steam_genres
+  // fallback so mis-tagged games (e.g. puzzle games that got default "action") still match.
+  const selectedGenres = ans.genres ?? [];
+  const effectiveGenres = getEffectiveGenres(game);
+  const genreOverlap = selectedGenres.filter(g => effectiveGenres.has(g));
+  if (selectedGenres.length > 0 && genreOverlap.length === 0) {
+    score -= 120;
+  } else {
+    score += genreOverlap.length * 60;
+  }
+  details.genreOverlap = genreOverlap;
+
+  // Players: soft penalty (data quality limited for many games)
+  const pp = ans.players ?? 'any';
+  if (pp !== 'any' && !game.quiz_players.includes(pp)) score -= 35;
+
+  // Online preference: soft penalty
+  const op = ans.online_preference ?? 'any';
+  if (op !== 'any' && game.quiz_online && game.quiz_online !== 'both' && game.quiz_online !== op) score -= 25;
+
+  // Platform: soft penalty (DB is Steam-focused; PS/Xbox/Switch coverage sparse)
+  const up = ans.platforms ?? [];
+  if (up.length > 0 && !up.some(p => game.platforms.includes(p))) score -= 70;
+
+  const si = STORY_ORDER.indexOf(ans.story_importance ?? 'nice');
+  const gi = STORY_ORDER.indexOf(game.quiz_story);
+  const sd = Math.abs((si < 0 ? 1 : si) - (gi < 0 ? 1 : gi));
+  if (sd === 0) { score += 30; details.storyMatch = true; }
+  else if (sd === 1) { score += 8; details.storyMatch = false; }
+  else { score -= 10; details.storyMatch = false; }
+
+  const sess = ans.session_length ?? 'any';
+  details.sessionMatch = false;
+  if (sess !== 'any') {
+    const si = SESSION_ORDER.indexOf(sess), gi = SESSION_ORDER.indexOf(game.quiz_session_length);
+    const sd = Math.abs((si < 0 ? 1 : si) - (gi < 0 ? 1 : gi));
+    if (sd === 0) { score += 25; details.sessionMatch = true; }
+    else if (sd === 1) score += 5;
+    else score -= 10;
+  }
+
+  const diff = ans.difficulty ?? 'any';
+  details.difficultyMatch = false;
+  if (diff !== 'any') {
+    const di = DIFFICULTY_ORDER.indexOf(diff), dgi = DIFFICULTY_ORDER.indexOf(game.quiz_difficulty);
+    const dd = Math.abs((di < 0 ? 1 : di) - (dgi < 0 ? 1 : dgi));
+    if (dd === 0) { score += 25; details.difficultyMatch = true; }
+    else if (dd === 1) score -= 10;
+    else score -= 30;
+  }
+
+  const POP_MAP = { nische: 2, eher_unbekannt: 4, ausgewogen: 5, beliebt: 7, mainstream: 9 };
+  const popTarget = POP_MAP[ans.popularity] !== undefined ? POP_MAP[ans.popularity] : 5;
+  score += Math.max(0, 20 - Math.abs(popTarget - game.quiz_popularity) * 4);
+  score += (game.review_score - 70) * 0.5;
+
+  // Uncertainty discount: -12 per default field when user wanted something different
+  const FIELD_DEFAULTS = { quiz_difficulty: 'medium', quiz_story: 'nice', quiz_session_length: 'medium' };
+  const ANS_KEYS = { quiz_difficulty: diff, quiz_story: ans.story_importance ?? 'nice', quiz_session_length: sess };
+  for (const [field, defaultVal] of Object.entries(FIELD_DEFAULTS)) {
+    const userAns = ANS_KEYS[field];
+    if (userAns !== 'any' && userAns !== defaultVal && game[field] === defaultVal) {
+      score -= 12;
+    }
+  }
+
+  const { bonus, connections } = lovedBonus(game, ans.loved_games_list ?? []);
+  score += bonus - dislikedPenalty(game, ans.disliked_games_list ?? []);
+  details.lovedConnections = connections;
+
+  return { score, details };
+}
+
+function buildReasons(game, ans, details) {
+  const r = [];
+  if (details.genreOverlap?.length) r.push(details.genreOverlap.join(' + '));
+  if (details.lovedConnections?.length) r.push('like ' + details.lovedConnections[0]);
+  if (details.sessionMatch) {
+    const m = { short: 'quick sessions', medium: 'medium sessions', long: 'long sessions' };
+    if (m[ans.session_length]) r.push(m[ans.session_length]);
+  }
+  if (details.difficultyMatch) {
+    const m = { chill: 'relaxed', medium: 'balanced challenge', hard: 'high difficulty' };
+    if (m[ans.difficulty]) r.push(m[ans.difficulty]);
+  }
+  if (details.storyMatch && ans.story_importance === 'core') r.push('story-driven');
+  if (details.storyMatch && ans.story_importance === 'irrelevant') r.push('no story required');
+  if (game.quiz_popularity <= 6 && game.review_score >= 85) r.push('hidden gem');
+  return r.slice(0, 4);
+}
+
+function getRecommendations(ans) {
+  _referenceCache.clear();
+  const scored = [];
+  for (const game of GAMES) {
+    const res = scoreGame(game, ans);
+    if (res) scored.push({ ...res, game });
+  }
+  scored.sort((a, b) => b.score - a.score);
+  // Top 8 with developer diversity (max 2 per developer)
+  const top = [];
+  const devCount = new Map();
+  for (const r of scored) {
+    if (top.length >= 8) break;
+    const dev = r.game.developer;
+    const cnt = devCount.get(dev) ?? 0;
+    if (cnt < 2) { top.push(r); devCount.set(dev, cnt + 1); }
+  }
+  const ids = new Set(top.map(r => r.game.appid));
+  const underdogs = scored
+    .filter(r => r.game.quiz_popularity <= 6 && r.game.review_score >= 88 && !ids.has(r.game.appid))
+    .slice(0, 3);
+  _referenceCache.clear();
+  return { top, underdogs };
+}
+
+// ── Quiz engine ──────────────────────────────────────────────────────────────
+const questions = [
+  {
+    id: 'platforms', type: 'multi',
+    title: 'Wo zockst du?',
+    hint: 'Mehrfachauswahl möglich.',
+    options: [
+      { value: 'pc', label: 'PC' },
+      { value: 'playstation', label: 'PlayStation' },
+      { value: 'xbox', label: 'Xbox' },
+      { value: 'switch', label: 'Nintendo Switch' },
+      { value: 'mobile', label: 'Mobile' },
+      { value: 'steamdeck', label: 'Steam Deck / Handheld' }
+    ], twoCol: true
+  },
+  {
+    id: 'players', type: 'single',
+    title: 'Mit wie vielen Leuten spielst du?',
+    options: [
+      { value: 'solo', label: 'Solo' },
+      { value: '2', label: 'Zu zweit' },
+      { value: '3-4', label: '3–4 Leute' },
+      { value: '5+', label: '5 oder mehr' },
+      { value: 'any', label: 'Egal / mal so mal so' }
+    ]
+  },
+  {
+    id: 'online_preference', type: 'single',
+    title: 'Online oder Offline?',
+    hint: 'Spielst du lieber mit anderen online oder allein für dich?',
+    options: [
+      { value: 'offline', label: 'Offline – Singleplayer, kein Internet nötig' },
+      { value: 'online', label: 'Online – ich will mit anderen spielen' },
+      { value: 'any', label: 'Egal – je nachdem wie mir ist' }
+    ]
+  },
+  {
+    id: 'budget', type: 'single',
+    title: 'Was darf das Spiel kosten?',
+    options: [
+      { value: 'free', label: 'Kostenlos' },
+      { value: '<5', label: 'Unter 5€' },
+      { value: '<10', label: 'Unter 10€' },
+      { value: '<30', label: 'Unter 30€' },
+      { value: 'any', label: 'Egal' }
+    ]
+  },
+  {
+    id: 'genres', type: 'multi',
+    title: 'Worauf hast du gerade Bock?',
+    hint: 'Wähle alles was passt.',
+    options: [
+      { value: 'action', label: 'Action' },
+      { value: 'rpg', label: 'RPG' },
+      { value: 'strategy', label: 'Strategie' },
+      { value: 'puzzle', label: 'Puzzle' },
+      { value: 'adventure', label: 'Adventure' },
+      { value: 'shooter', label: 'Shooter' },
+      { value: 'simulation', label: 'Simulation' },
+      { value: 'horror', label: 'Horror' },
+      { value: 'roguelike', label: 'Roguelike' },
+      { value: 'platformer', label: 'Platformer' },
+      { value: 'sports', label: 'Sport / Racing' },
+      { value: 'sandbox', label: 'Sandbox / Survival' }
+    ], twoCol: true
+  },
+  {
+    id: 'loved_games', type: 'text',
+    title: 'Welche Games hast du geliebt?',
+    hint: 'Ein paar Titel, durch Komma getrennt.',
+    placeholder: 'z.B. Stardew Valley, Hollow Knight, Hades, Witcher 3...'
+  },
+  {
+    id: 'disliked_games', type: 'text',
+    title: 'Welche Games gingen gar nicht?',
+    hint: 'Hilft uns, ähnliche zu vermeiden.',
+    placeholder: 'z.B. Fortnite, FIFA, Call of Duty...'
+  },
+  {
+    id: 'session_length', type: 'single',
+    title: 'Wie lange spielst du am Stück?',
+    options: [
+      { value: 'short', label: 'Kurz – 30 Minuten, dann Schluss' },
+      { value: 'medium', label: 'Mittel – 1–2 Stunden' },
+      { value: 'long', label: 'Lang – ich tauche richtig ab' },
+      { value: 'any', label: 'Egal' }
+    ]
+  },
+  {
+    id: 'difficulty', type: 'single',
+    title: 'Wie viel Herausforderung?',
+    options: [
+      { value: 'chill', label: 'Entspannt – ich will abschalten' },
+      { value: 'medium', label: 'Mittel – ein bisschen Widerstand' },
+      { value: 'hard', label: 'Hart – fordere mich heraus' },
+      { value: 'any', label: 'Egal' }
+    ]
+  },
+  {
+    id: 'story_importance', type: 'single',
+    title: 'Wie wichtig ist die Story?',
+    options: [
+      { value: 'core', label: 'Sehr wichtig – Story ist alles' },
+      { value: 'nice', label: 'Nice to have, aber kein Muss' },
+      { value: 'irrelevant', label: 'Egal, ich will Gameplay' }
+    ]
+  },
+  {
+    id: 'popularity', type: 'single',
+    title: 'Mainstream oder Geheimtipp?',
+    hint: 'Wo soll der Empfehlungs-Mix liegen?',
+    options: [
+      { value: 'nische', label: 'Nische – die allermeisten kennen es nicht' },
+      { value: 'eher_unbekannt', label: 'Eher unbekannt' },
+      { value: 'ausgewogen', label: 'Ausgewogen' },
+      { value: 'beliebt', label: 'Beliebt' },
+      { value: 'mainstream', label: 'Mainstream – kennt jeder' }
+    ]
+  }
+];
+
+const state = { current: 0, answers: {} };
+const root = document.getElementById('quiz-root');
+
+function render() {
+  if (state.current >= questions.length) { renderResult(); return; }
+  const q = questions[state.current];
+  const total = questions.length;
+  const progress = (state.current / total) * 100;
+
+  let inputHtml = '';
+  if (q.type === 'single' || q.type === 'multi') {
+    const cls = q.twoCol ? 'options two-col' : 'options';
+    inputHtml = `<div class="${cls}">` + q.options.map(opt => {
+      const sel = isSelected(q, opt.value);
+      return `<button class="option ${q.type === 'multi' ? 'multi' : ''} ${sel ? 'selected' : ''}" data-value="${opt.value}">
+        <span>${opt.label}</span><span class="check"></span></button>`;
+    }).join('') + '</div>';
+  } else if (q.type === 'text') {
+    const val = state.answers[q.id] || '';
+    inputHtml = `<textarea class="textbox" placeholder="${q.placeholder || ''}">${val}</textarea>`;
+  } else if (q.type === 'slider') {
+    const val = state.answers[q.id] !== undefined ? state.answers[q.id] : q.default;
+    inputHtml = `<div class="slider-wrap">
+      <div class="slider-value">${q.valueLabels[val]}</div>
+      <input type="range" min="${q.min}" max="${q.max}" value="${val}" />
+      <div class="slider-labels"><span>${q.leftLabel}</span><span>${q.rightLabel}</span></div>
+    </div>`;
+  }
+
+  const nextLabel = state.current === questions.length - 1 ? 'Spiele finden' : 'Weiter';
+  root.innerHTML = `
+    <div class="progress-wrap">
+      <div class="progress-meta"><span>Frage</span><span class="count">${String(state.current+1).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
+    </div>
+    <div class="question">
+      <div class="q-number">Q${String(state.current+1).padStart(2,'0')}</div>
+      <h2 class="q-title">${q.title}</h2>
+      ${q.hint ? `<p class="q-hint">${q.hint}</p>` : ''}
+      ${inputHtml}
+      <div class="nav">
+        <button class="btn" id="back" ${state.current === 0 ? 'disabled' : ''}>← Zurück</button>
+        <button class="btn btn-primary" id="next" ${canProceed(q) ? '' : 'disabled'}>${nextLabel}</button>
+      </div>
+    </div>`;
+
+  attachHandlers(q);
+}
+
+function isSelected(q, value) {
+  const ans = state.answers[q.id];
+  if (q.type === 'multi') return Array.isArray(ans) && ans.includes(value);
+  return ans === value;
+}
+
+function canProceed(q) {
+  const ans = state.answers[q.id];
+  if (q.type === 'text' || q.type === 'slider') return true;
+  if (q.type === 'multi') return Array.isArray(ans) && ans.length > 0;
+  return ans !== undefined && ans !== null;
+}
+
+function attachHandlers(q) {
+  if (q.type === 'single' || q.type === 'multi') {
+    document.querySelectorAll('.option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const v = btn.dataset.value;
+        if (q.type === 'multi') {
+          const cur = Array.isArray(state.answers[q.id]) ? [...state.answers[q.id]] : [];
+          const idx = cur.indexOf(v);
+          if (idx >= 0) cur.splice(idx, 1); else cur.push(v);
+          state.answers[q.id] = cur;
+        } else {
+          state.answers[q.id] = v;
+        }
+        render();
+      });
+    });
+  } else if (q.type === 'text') {
+    const ta = document.querySelector('.textbox');
+    ta.addEventListener('input', e => { state.answers[q.id] = e.target.value; });
+    ta.focus();
+  } else if (q.type === 'slider') {
+    const slider = document.querySelector('input[type="range"]');
+    const valEl = document.querySelector('.slider-value');
+    if (state.answers[q.id] === undefined) state.answers[q.id] = q.default;
+    slider.addEventListener('input', e => {
+      const v = parseInt(e.target.value);
+      state.answers[q.id] = v;
+      valEl.textContent = q.valueLabels[v];
+    });
+  }
+
+  document.getElementById('next').addEventListener('click', () => { state.current++; render(); });
+  const back = document.getElementById('back');
+  if (back && !back.disabled) back.addEventListener('click', () => { state.current = Math.max(0, state.current - 1); render(); });
+}
+
+// ── Result rendering ─────────────────────────────────────────────────────────
+async function renderResult() {
+  root.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Analysiere deinen Geschmack…</div></div>';
+
+  try {
+    const ans = { ...state.answers };
+    ans.loved_games_list = typeof ans.loved_games === 'string'
+      ? ans.loved_games.split(',').map(s => s.trim()).filter(Boolean) : [];
+    ans.disliked_games_list = typeof ans.disliked_games === 'string'
+      ? ans.disliked_games.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+    // Call backend API
+    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/recommend';
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        platforms: ans.platforms || [],
+        players: ans.players || 'any',
+        online_preference: ans.online_preference || 'any',
+        budget: ans.budget || 'any',
+        genres: ans.genres || [],
+        loved_games: ans.loved_games_list || [],
+        disliked_games: ans.disliked_games_list || [],
+        session_length: ans.session_length || 'any',
+        difficulty: ans.difficulty || 'any',
+        story_importance: ans.story_importance || 'nice',
+        popularity: ans.popularity || 5
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const apiResults = await response.json();
+
+    // Convert API response to local format for rendering
+    const allGames = apiResults.results.map(r => ({
+      game: r,
+      score: r.match_score
+    }));
+
+    const top = allGames.filter(r => !r.game.is_hidden_gem).slice(0, 10);
+    const underdogs = allGames.filter(r => r.game.is_hidden_gem).slice(0, 3);
+
+    function scoreCls(s) { return s >= 90 ? 'badge-score-high' : s >= 75 ? 'badge-score-mid' : 'badge-score-low'; }
+    function priceBadge(g) {
+      return g.is_free
+        ? '<span class="badge badge-free">Free</span>'
+        : `<span class="badge badge-price">€${g.price_eur.toFixed(2)}</span>`;
+    }
+
+    function cardHtml(item, rank, isGem) {
+      const g = item.game;
+      const reasonTags = '';  // API doesn't return details; skip reasons for now
+      const rankStr = isGem ? '◆' : String(rank).padStart(2, '0');
+      return `<div class="game-card${isGem ? ' gem' : ''}">
+        <div class="card-top">
+          <div class="card-rank">${rankStr}</div>
+          <div class="card-main">
+            <div class="card-name">${g.name}</div>
+            <div class="card-badges">
+              ${priceBadge(g)}
+              <span class="badge ${scoreCls(g.review_score)}">${g.review_score}% ★</span>
+              ${isGem ? '<span class="badge badge-gem">Hidden Gem</span>' : ''}
+            </div>
+          </div>
+        </div>
+        <p class="card-desc">${g.description}</p>
+        ${reasonTags ? `<div class="card-reasons">${reasonTags}</div>` : ''}
+        <a class="steam-link" href="${g.steam_url}?utm_source=wgtp" target="_blank" rel="noopener">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M2 10L10 2M10 2H4M10 2v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Auf Steam ansehen
+        </a>
+      </div>`;
+    }
+
+    const topHtml = top.map((item, i) => cardHtml(item, i + 1, false)).join('');
+    const gemsHtml = underdogs.length
+      ? `<div class="gems-section">
+          <div class="section-label">Hidden Gems — verkannte Perlen</div>
+          ${underdogs.map(item => cardHtml(item, 0, true)).join('')}
+        </div>`
+      : '';
+
+    root.innerHTML = `
+      <div class="results">
+        <h2 class="results-title">Deine <em>perfekten</em> Spiele.</h2>
+        <p class="results-sub">Basierend auf deinen Antworten — sortiert nach Passgenauigkeit.</p>
+        <div class="section-label">Top Empfehlungen</div>
+        ${topHtml}
+        ${gemsHtml}
+        <div class="results-footer">
+          <button class="btn" id="restart">↻ Nochmal</button>
+        </div>
+      </div>`;
+
+    document.getElementById('restart').addEventListener('click', () => {
+      state.current = 0; state.answers = {}; render();
+    });
+  } catch (error) {
+    console.error('Error fetching recommendations:', error);
+    root.innerHTML = `
+      <div class="results">
+        <h2 class="results-title">Fehler</h2>
+        <p class="results-sub">${error.message}</p>
+        <div class="results-footer">
+          <button class="btn" id="restart">↻ Nochmal</button>
+        </div>
+      </div>`;
+    document.getElementById('restart').addEventListener('click', () => {
+      state.current = 0; state.answers = {}; render();
+    });
+  }
+}
+
+fetch('games_data.json')
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(data => { GAMES = Array.isArray(data) ? data : (data.games ?? []); render(); })
+  .catch(() => {
+    document.getElementById('quiz-root').innerHTML =
+      '<p style="color:red;padding:2rem;font-family:monospace">Fehler: games_data.json konnte nicht geladen werden.<br>Öffne die Datei über einen lokalen Webserver (z.B. <code>npx serve</code>), nicht direkt als file://.</p>';
+  });
+</script>
+</body>
+</html>
