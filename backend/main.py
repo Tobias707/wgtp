@@ -78,6 +78,12 @@ GENRE_PROFILE_TEXT = {
     'action':     'action fighting hack and slash brawler melee combat',
 }
 
+DIFFICULTY_PROFILE_TEXT = {
+    'easy':   'casual easy relaxing accessible beginner-friendly low stakes cozy chill',
+    'medium': 'moderate balanced normal difficulty approachable',
+    'hard':   'challenging hard difficult punishing demanding precise unforgiving souls-like',
+}
+
 
 def get_genre_tag_set(genres: list) -> set:
     tags = set()
@@ -125,11 +131,13 @@ def build_user_profile_text(quiz: QuizRequest) -> str:
         unique_tags = list(dict.fromkeys(loved_tag_words))  # dedupe, preserve order
         loved_tag_anchor = f"Similar to games tagged: {', '.join(unique_tags)}. "
 
+    difficulty_expansion = DIFFICULTY_PROFILE_TEXT.get(quiz.difficulty, quiz.difficulty)
+
     text = (
         f"Looking for: {genres_str}. "
         f"{genre_expansions}. "
         f"{quiz.players} player(s). "
-        f"{quiz.difficulty} difficulty. "
+        f"{difficulty_expansion}. "
         f"{quiz.story_importance} story. "
         f"{quiz.session_length} play sessions. "
         f"Popularity preference: {quiz.popularity}/10. "
