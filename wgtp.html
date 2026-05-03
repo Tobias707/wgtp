@@ -669,7 +669,7 @@ async function renderResult() {
       ? ans.disliked_games.split(',').map(s => s.trim()).filter(Boolean) : [];
 
     // Call backend API
-    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/recommend';
+    const apiUrl = 'https://wgtp-production.up.railway.app/api/recommend';
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
