@@ -18,10 +18,11 @@ Game recommendation website. Users answer 10-question quiz about gaming preferen
 - [x] Deploy backend to Railway: https://wgtp-production.up.railway.app
 - [x] Update wgtp.html API URL to production
 - [x] Algorithm tuning round 1 (2026-05-03) — see Algorithm Changelog below
+- [x] Algorithm tuning round 2 (2026-05-03) — all 5 edge-case profiles tested
 
 ### ⏳ Remaining
-- [ ] Continue algorithm tuning based on real recommendation feedback
-- [ ] Test remaining edge-case profiles (impossible combo, popularity extremes)
+- [ ] Mainstream genre profile quality: user wants popular games but gets indie hidden gems (CS2 ranks #5 not #1). Root cause: quiz_popularity data uncertain → popularity penalty can't be applied without genre-specific thresholds
+- [ ] Cozy profile bottom 2: Cultist Simulator + Ultimate Epic Battle Simulator slip through simulation genre filter despite wrong vibe. Both review_score 77-79, raising threshold to 80 would filter them.
 
 ---
 
@@ -173,11 +174,12 @@ const apiUrl = 'https://wgtp-api.render.com/api/recommend';
 Deploy wgtp.html to Vercel (or static host).
 
 Test with 5+ different quiz profiles:
-- [ ] User wants RPG + long sessions → returns RPGs
-- [ ] User selects rare genre (roguelike) + specific budget → returns best roguelikes + near-matches
-- [ ] User dislikes all mainstream → hidden gems rank higher
-- [ ] User loves Stardew Valley + wants cozy → returns similar cozy games
-- [ ] User selects impossible combo → still returns 10 games (no crash)
+- [x] User wants RPG + long sessions → returns RPGs
+- [x] User selects rare genre (roguelike) + Hades loved → solid roguelikes ✅
+- [x] User wants hidden gems (nische, puzzle+adventure) → 4-5/10 are hidden gems ✅
+- [x] User loves Stardew Valley + wants cozy → top 7 correct, bottom 2 are wrong vibe ⚠️
+- [x] User selects impossible combo → still returns 10 games (no crash) ✅
+- [x] Mainstream action/shooter → CS2 in results but ranked #5 not #1 ⚠️
 
 ---
 
@@ -249,8 +251,32 @@ Test with 5+ different quiz profiles:
 
 ---
 
+### Round 2 — 2026-05-03
+
+**Profiles tested (5 edge cases):**
+
+| Profile | Result |
+|---|---|
+| Roguelike + Hades loved, budget <30 | DRG:Survivor, Halls of Torment, 20Min Till Dawn ✅ |
+| Nische puzzle+adventure, short sessions | 4-5 hidden gems, Tales from Borderlands, Sally Face ✅ |
+| Cozy, Stardew loved, chill, sim+rpg | Stardew #1 ✅, top 7 solid, Cultist Sim + UEBS at bottom ⚠️ |
+| Impossible combo (mobile, free, horror+sim) | 10 results, no crash ✅ |
+| Mainstream action/shooter, popularity=9 | CS2 appears but ranks #5 behind indie games ⚠️ |
+
+**Bug found and fixed:**
+
+1. **`chill` difficulty not mapped** (`9e71145`) — Frontend sends `chill` (label: "Entspannt") but backend only mapped `easy`/`medium`/`hard`. All users picking easy/relaxed got zero semantic expansion for difficulty. Fix: added `'chill'` key with same expansion as `'easy'`.
+
+**Known limitations (not fixed — need better data or approach):**
+
+- **Mainstream genre quality**: `quiz_popularity` values unreliable for applying popularity-based penalties. Genre popularity is relative (roguelikes have lower raw quiz_popularity than action games even when popular within genre). A `-40` penalty fixed mainstream but broke roguelike results. Conservative penalty (`<= 3` threshold) does nothing visible.
+  
+- **Simulation genre contamination**: Cultist Simulator + Ultimate Epic Battle Simulator appear in cozy/farming results because both have "Simulation" steam tag. Review scores 79/77 — raising threshold from 75 → 80 would filter both. Avoided this change to not lose other borderline-quality games without broader testing.
+
+---
+
 ## Contact
 
 Email: tobias.l.ulmer@gmail.com
 
-*Last updated: 2026-05-03 — algorithm tuning round 1 complete, continuing feedback loop*
+*Last updated: 2026-05-03 — algorithm tuning round 2 complete*
