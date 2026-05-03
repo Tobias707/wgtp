@@ -1,4 +1,7 @@
 # CLAUDE.md – What Game to Play (WGTP)
+## custom commands
+
+When i say "wrap it up" sum the context of the current chat so i can take it to a different chat
 
 ## Project Overview
 

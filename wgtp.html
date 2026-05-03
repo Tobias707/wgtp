@@ -673,6 +673,8 @@ async function renderResult() {
 
     // Call backend API
     const apiUrl = 'https://wgtp-production.up.railway.app/api/recommend';
+    const POP_MAP = { nische: 2, eher_unbekannt: 4, ausgewogen: 5, beliebt: 7, mainstream: 9 };
+    const popValue = POP_MAP[ans.popularity] !== undefined ? POP_MAP[ans.popularity] : 5;
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -687,7 +689,7 @@ async function renderResult() {
         session_length: ans.session_length || 'any',
         difficulty: ans.difficulty || 'any',
         story_importance: ans.story_importance || 'nice',
-        popularity: ans.popularity || 5
+        popularity: popValue
       })
     });
 
