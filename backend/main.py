@@ -80,6 +80,7 @@ GENRE_PROFILE_TEXT = {
 
 DIFFICULTY_PROFILE_TEXT = {
     'easy':   'casual easy relaxing accessible beginner-friendly low stakes cozy chill',
+    'chill':  'casual easy relaxing accessible beginner-friendly low stakes cozy chill',
     'medium': 'moderate balanced normal difficulty approachable',
     'hard':   'challenging hard difficult punishing demanding precise unforgiving souls-like',
 }
