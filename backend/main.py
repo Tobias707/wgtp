@@ -97,6 +97,20 @@ STORY_IMPORTANCE_PROFILE_TEXT = {
     'irrelevant': 'gameplay-focused no story minimal narrative pure mechanics action arcade',
 }
 
+PLAYERS_PROFILE_TEXT = {
+    'solo':  'singleplayer solo single player no multiplayer offline alone',
+    '2':     'co-op two players local co-op online co-op duo cooperative two-player couch co-op',
+    '3-4':   'multiplayer 3 4 players co-op team cooperative online friends party',
+    '5+':    'large multiplayer many players online multiplayer team-based group squad',
+    'any':   'multiplayer singleplayer co-op flexible',
+}
+
+ONLINE_PREFERENCE_PROFILE_TEXT = {
+    'online':   'online multiplayer internet required play with others connected',
+    'offline':  'offline singleplayer no internet local no online required',
+    'any':      'online or offline flexible singleplayer multiplayer',
+}
+
 ADULT_TAGS = {"sexual content", "nsfw", "adult only content", "hentai", "nudity"}
 
 
@@ -149,11 +163,14 @@ def build_user_profile_text(quiz: QuizRequest) -> str:
     difficulty_expansion = DIFFICULTY_PROFILE_TEXT.get(quiz.difficulty, quiz.difficulty)
     session_expansion = SESSION_LENGTH_PROFILE_TEXT.get(quiz.session_length, quiz.session_length)
     story_expansion = STORY_IMPORTANCE_PROFILE_TEXT.get(quiz.story_importance, quiz.story_importance)
+    players_expansion = PLAYERS_PROFILE_TEXT.get(quiz.players, quiz.players)
+    online_expansion = ONLINE_PREFERENCE_PROFILE_TEXT.get(quiz.online_preference, quiz.online_preference)
 
     text = (
         f"Looking for: {genres_str}. "
         f"{genre_expansions}. "
-        f"{quiz.players} player(s). "
+        f"{players_expansion}. "
+        f"{online_expansion}. "
         f"{difficulty_expansion}. "
         f"{story_expansion}. "
         f"{session_expansion}. "
@@ -163,7 +180,6 @@ def build_user_profile_text(quiz: QuizRequest) -> str:
         f"{loved_tag_anchor}"
         f"Disliked: {disliked_str}. "
         f"Platforms: {', '.join(quiz.platforms)}. "
-        f"Online preference: {quiz.online_preference}."
     )
     return text
 
