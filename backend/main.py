@@ -174,7 +174,7 @@ def build_user_profile_text(quiz: QuizRequest) -> str:
         f"{difficulty_expansion}. "
         f"{story_expansion}. "
         f"{session_expansion}. "
-        f"Popularity preference: {quiz.popularity}/10. "
+        f"{'hidden gem obscure unknown niche indie underground' if quiz.popularity <= 3 else 'popular mainstream blockbuster well-known famous' if quiz.popularity >= 7 else 'moderately popular'}. "
         f"Budget: {quiz.budget}. "
         f"Loved games: {loved_str}. "
         f"{loved_tag_anchor}"
@@ -267,6 +267,12 @@ def recommend(quiz: QuizRequest):
                 game.get("quiz_popularity", 10) <= 6 and
                 game.get("review_score", 0) >= 88
             )
+
+            # Popularity preference penalty/boost
+            if quiz.popularity >= 7 and is_hidden_gem:
+                score -= 30  # user wants mainstream, penalize obscure gems
+            elif quiz.popularity <= 3 and not is_hidden_gem and game.get("quiz_popularity", 10) >= 8:
+                score -= 20  # user wants niche, penalize blockbusters
 
             scored_games.append({
                 "game": game,
