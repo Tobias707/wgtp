@@ -20,10 +20,11 @@ app.add_middleware(
 games_data = None
 games_list = None
 embedding_model = None
+games_by_name = {}  # lowercase name -> game dict for loved/disliked lookups
 
 @app.on_event("startup")
 def load_games():
-    global games_data, games_list, embedding_model
+    global games_data, games_list, embedding_model, games_by_name
     try:
         # Load embedding model (same one used for preprocessing)
         print("Loading sentence-transformer model...")
@@ -35,6 +36,7 @@ def load_games():
         with open(data_path, "r", encoding="utf-8") as f:
             games_data = json.load(f)
         games_list = games_data["games"]
+        games_by_name = {g["name"].lower(): g for g in games_list}
         print(f"Loaded {len(games_list)} games with embeddings")
     except Exception as e:
         print(f"Error loading data: {e}")
@@ -108,10 +110,20 @@ def cosine_similarity(a, b):
 
 def build_user_profile_text(quiz: QuizRequest) -> str:
     genres_str = ", ".join(quiz.genres) if quiz.genres else "any genre"
-    # Expand genre keywords so the embedding vector aligns with game tag vocabulary
     genre_expansions = " ".join(GENRE_PROFILE_TEXT[g] for g in quiz.genres if g in GENRE_PROFILE_TEXT)
     loved_str = ", ".join(quiz.loved_games) if quiz.loved_games else "none"
     disliked_str = ", ".join(quiz.disliked_games) if quiz.disliked_games else "none"
+
+    # Inject actual tags from loved games so embedding anchors toward their vocabulary
+    loved_tag_words = []
+    for game_name in quiz.loved_games:
+        match = games_by_name.get(game_name.lower())
+        if match:
+            loved_tag_words.extend(match.get("steam_tags", [])[:10])
+    loved_tag_anchor = ""
+    if loved_tag_words:
+        unique_tags = list(dict.fromkeys(loved_tag_words))  # dedupe, preserve order
+        loved_tag_anchor = f"Similar to games tagged: {', '.join(unique_tags)}. "
 
     text = (
         f"Looking for: {genres_str}. "
@@ -123,6 +135,7 @@ def build_user_profile_text(quiz: QuizRequest) -> str:
         f"Popularity preference: {quiz.popularity}/10. "
         f"Budget: {quiz.budget}. "
         f"Loved games: {loved_str}. "
+        f"{loved_tag_anchor}"
         f"Disliked: {disliked_str}. "
         f"Platforms: {', '.join(quiz.platforms)}. "
         f"Online preference: {quiz.online_preference}."
@@ -141,6 +154,19 @@ def recommend(quiz: QuizRequest):
 
         # Embed user profile using sentence-transformer
         user_embedding = embedding_model.encode(user_text, convert_to_numpy=True)
+
+        # Blend in loved game embeddings — pulls user vector toward known preferences
+        loved_vecs = []
+        for game_name in quiz.loved_games:
+            match = games_by_name.get(game_name.lower())
+            if match and "embedding" in match:
+                loved_vecs.append(np.array(match["embedding"]))
+        if loved_vecs:
+            loved_avg = np.mean(loved_vecs, axis=0)
+            user_embedding = 0.65 * user_embedding + 0.35 * loved_avg
+            norm = np.linalg.norm(user_embedding)
+            if norm > 0:
+                user_embedding = user_embedding / norm
 
         budget_max = budget_to_float(quiz.budget)
         disliked_set = set(g.lower() for g in quiz.disliked_games)
