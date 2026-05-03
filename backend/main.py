@@ -211,6 +211,7 @@ def recommend(quiz: QuizRequest):
 
         budget_max = budget_to_float(quiz.budget)
         disliked_set = set(g.lower() for g in quiz.disliked_games)
+        loved_set = set(g.lower() for g in quiz.loved_games)
         user_genre_tags = get_genre_tag_set(quiz.genres)
 
         scored_games = []
@@ -227,6 +228,10 @@ def recommend(quiz: QuizRequest):
             # Hard filter: adult content
             game_tags_lower_set = {t.lower() for t in game.get("steam_tags", [])}
             if game_tags_lower_set.intersection(ADULT_TAGS):
+                continue
+
+            # Hard filter: exclude loved games from results (user already knows them)
+            if game["name"].lower() in loved_set:
                 continue
 
             # Get embedding similarity
