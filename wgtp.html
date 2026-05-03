@@ -174,7 +174,7 @@
 <footer><span class="blink"></span><span id="version-label"></span></footer>
 
 <script>
-const VERSION = '0.3 · 2026-05-03';
+const VERSION = '0.4 · 2026-05-03';
 document.getElementById('version-label').textContent = VERSION + ' · powered by algorithm';
 
 let GAMES = [];
@@ -779,13 +779,7 @@ async function renderResult() {
   }
 }
 
-fetch('games_data.json')
-  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-  .then(data => { GAMES = Array.isArray(data) ? data : (data.games ?? []); render(); })
-  .catch(() => {
-    document.getElementById('quiz-root').innerHTML =
-      '<p style="color:red;padding:2rem;font-family:monospace">Fehler: games_data.json konnte nicht geladen werden.<br>Öffne die Datei über einen lokalen Webserver (z.B. <code>npx serve</code>), nicht direkt als file://.</p>';
-  });
+render();
 </script>
 </body>
 </html>
