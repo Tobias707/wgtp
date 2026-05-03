@@ -196,9 +196,20 @@ def recommend(quiz: QuizRequest):
 
         scored_games = []
 
+        ADULT_TAGS = {"sexual content", "nsfw", "adult only content", "hentai", "nudity"}
+
         for game in games_list:
             # Hard filter: budget
             if game.get("price_eur", 0) > budget_max:
+                continue
+
+            # Hard filter: minimum review quality
+            if game.get("review_score", 0) < 75:
+                continue
+
+            # Hard filter: adult content
+            game_tags_lower_set = {t.lower() for t in game.get("steam_tags", [])}
+            if game_tags_lower_set.intersection(ADULT_TAGS):
                 continue
 
             # Get embedding similarity
@@ -214,8 +225,7 @@ def recommend(quiz: QuizRequest):
             # Apply soft filters
             # Genre mismatch: heavy penalty when user picked genres but game has none matching
             if user_genre_tags:
-                game_tags_lower = {t.lower() for t in game.get("steam_tags", [])}
-                if not game_tags_lower.intersection(user_genre_tags):
+                if not game_tags_lower_set.intersection(user_genre_tags):
                     score -= 80
 
             # Disliked games penalty
