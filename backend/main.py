@@ -46,6 +46,45 @@ def health():
     return {"status": "ok", "games_loaded": len(games_list) if games_list else 0}
 
 
+GENRE_TAG_MAP = {
+    'puzzle':     {'puzzle', 'logic', 'physics puzzle', 'point & click', 'hidden object', 'match 3', 'word game', 'escape room', 'sokoban', 'nonogram', 'tile-matching'},
+    'rpg':        {'rpg', 'action rpg', 'crpg', 'dungeon crawler', 'jrpg', 'turn-based rpg', 'loot'},
+    'strategy':   {'strategy', '4x', 'grand strategy', 'city builder', 'rts', 'tower defense', 'turn-based strategy', 'wargame', 'card game', 'card battler', 'deckbuilding', 'deckbuilder'},
+    'simulation': {'simulation', 'farming sim', 'life sim', 'flight', 'tycoon', 'management', 'economy', 'cooking'},
+    'roguelike':  {'rogue-like', 'rogue-lite', 'action roguelike', 'roguelite', 'roguelike'},
+    'platformer': {'platformer', '2d platformer', 'metroidvania', 'runner', 'auto-runner', 'precision platformer'},
+    'horror':     {'horror', 'survival horror', 'psychological horror'},
+    'sports':     {'sports', 'racing', 'football', 'soccer', 'baseball', 'basketball', 'skating', 'golf'},
+    'sandbox':    {'sandbox', 'open world survival craft', 'building', 'crafting', 'survival', 'base building'},
+    'shooter':    {'fps', 'first-person shooter', 'third-person shooter', 'hero shooter', "shoot 'em up", 'bullet hell', 'twin stick shooter'},
+    'adventure':  {'adventure', 'action-adventure', 'exploration', 'narrative', 'visual novel', 'walking simulator', 'interactive fiction'},
+    'action':     {'action', "beat 'em up", 'fighting', 'brawler', 'hack and slash', 'martial arts'},
+}
+
+GENRE_PROFILE_TEXT = {
+    'puzzle':     'puzzle logic brain teaser point and click hidden object',
+    'rpg':        'role-playing RPG character progression leveling stats dungeon loot',
+    'strategy':   'strategy planning resource management city building turn-based real-time',
+    'simulation': 'simulation management tycoon farming life economy',
+    'roguelike':  'roguelike rogue-lite procedural permadeath run-based',
+    'platformer': 'platformer jumping 2D metroidvania precision movement',
+    'horror':     'horror scary atmospheric survival horror psychological thriller',
+    'sports':     'sports racing football soccer competitive athletics',
+    'sandbox':    'sandbox open world survival crafting building exploration',
+    'shooter':    'first-person shooter FPS third-person shooter gun combat shooting',
+    'adventure':  'adventure exploration narrative story-driven visual novel',
+    'action':     'action fighting hack and slash brawler melee combat',
+}
+
+
+def get_genre_tag_set(genres: list) -> set:
+    tags = set()
+    for g in genres:
+        if g in GENRE_TAG_MAP:
+            tags.update(GENRE_TAG_MAP[g])
+    return tags
+
+
 def budget_to_float(budget_str: str) -> float:
     """Convert budget string to float EUR"""
     if budget_str == "free":
@@ -68,13 +107,15 @@ def cosine_similarity(a, b):
 
 
 def build_user_profile_text(quiz: QuizRequest) -> str:
-    """Build user preference text for embedding"""
     genres_str = ", ".join(quiz.genres) if quiz.genres else "any genre"
+    # Expand genre keywords so the embedding vector aligns with game tag vocabulary
+    genre_expansions = " ".join(GENRE_PROFILE_TEXT[g] for g in quiz.genres if g in GENRE_PROFILE_TEXT)
     loved_str = ", ".join(quiz.loved_games) if quiz.loved_games else "none"
     disliked_str = ", ".join(quiz.disliked_games) if quiz.disliked_games else "none"
 
     text = (
         f"Looking for: {genres_str}. "
+        f"{genre_expansions}. "
         f"{quiz.players} player(s). "
         f"{quiz.difficulty} difficulty. "
         f"{quiz.story_importance} story. "
@@ -103,6 +144,7 @@ def recommend(quiz: QuizRequest):
 
         budget_max = budget_to_float(quiz.budget)
         disliked_set = set(g.lower() for g in quiz.disliked_games)
+        user_genre_tags = get_genre_tag_set(quiz.genres)
 
         scored_games = []
 
@@ -122,6 +164,12 @@ def recommend(quiz: QuizRequest):
             score = similarity * 100
 
             # Apply soft filters
+            # Genre mismatch: heavy penalty when user picked genres but game has none matching
+            if user_genre_tags:
+                game_tags_lower = {t.lower() for t in game.get("steam_tags", [])}
+                if not game_tags_lower.intersection(user_genre_tags):
+                    score -= 80
+
             # Disliked games penalty
             if game["name"].lower() in disliked_set:
                 score -= 100
