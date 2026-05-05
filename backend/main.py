@@ -234,6 +234,12 @@ def recommend(quiz: QuizRequest):
             if game["name"].lower() in loved_set:
                 continue
 
+            # Hard filter: players preference (e.g. solo user should not get multiplayer games)
+            if quiz.players != "any":
+                game_players = game.get("quiz_players", [])
+                if quiz.players not in game_players:
+                    continue
+
             # Get embedding similarity
             if "embedding" not in game:
                 continue
@@ -260,12 +266,6 @@ def recommend(quiz: QuizRequest):
             if user_platforms and game_platforms:
                 if not game_platforms.intersection(user_platforms):
                     score -= 70
-
-            # Players mismatch penalty (use quiz_players)
-            if quiz.players != "any":
-                game_players = game.get("quiz_players", [])
-                if quiz.players not in game_players:
-                    score -= 80
 
             # Check for hidden gem
             is_hidden_gem = (
