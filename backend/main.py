@@ -265,7 +265,7 @@ def recommend(quiz: QuizRequest):
             if quiz.players != "any":
                 game_players = game.get("quiz_players", [])
                 if quiz.players not in game_players:
-                    score -= 35
+                    score -= 80
 
             # Check for hidden gem
             is_hidden_gem = (
