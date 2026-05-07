@@ -143,6 +143,14 @@
   .steam-link { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); text-decoration: none; border-bottom: 1px solid var(--border); padding-bottom: 1px; transition: color 0.18s, border-color 0.18s; }
   .steam-link:hover { color: var(--accent); border-color: var(--accent); }
 
+  .vote-btns { display: flex; gap: 4px; flex-shrink: 0; align-self: flex-start; padding-top: 3px; }
+  .vote-btn { background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); cursor: pointer; font-size: 14px; line-height: 1; padding: 5px 9px; transition: all 0.15s ease; }
+  .vote-btn:hover { border-color: var(--border-strong); color: var(--text); }
+  .vote-btn.up.active { border-color: rgba(194,255,61,0.4); color: var(--accent); background: var(--accent-dim); }
+  .vote-btn.down.active { border-color: rgba(255,87,87,0.4); color: var(--danger); background: rgba(255,87,87,0.08); }
+  .game-card.voted-down { opacity: 0.4; transition: opacity 0.2s ease; }
+  .game-card.voted-up { border-left: 2px solid rgba(194,255,61,0.45); }
+
   .gems-section { margin-top: 40px; }
   .results-footer { margin-top: 48px; display: flex; gap: 12px; flex-wrap: wrap; }
 
@@ -376,9 +384,6 @@ function scoreGame(game, ans) {
     else score -= 30;
   }
 
-  const POP_MAP = { nische: 2, eher_unbekannt: 4, ausgewogen: 5, beliebt: 7, mainstream: 9 };
-  const popTarget = POP_MAP[ans.popularity] !== undefined ? POP_MAP[ans.popularity] : 5;
-  score += Math.max(0, 20 - Math.abs(popTarget - game.quiz_popularity) * 4);
   score += (game.review_score - 70) * 0.5;
 
   // Uncertainty discount: -12 per default field when user wanted something different
@@ -412,7 +417,6 @@ function buildReasons(game, ans, details) {
   }
   if (details.storyMatch && ans.story_importance === 'core') r.push('story-driven');
   if (details.storyMatch && ans.story_importance === 'irrelevant') r.push('no story required');
-  if (game.quiz_popularity <= 6 && game.review_score >= 85) r.push('hidden gem');
   return r.slice(0, 4);
 }
 
@@ -433,12 +437,8 @@ function getRecommendations(ans) {
     const cnt = devCount.get(dev) ?? 0;
     if (cnt < 2) { top.push(r); devCount.set(dev, cnt + 1); }
   }
-  const ids = new Set(top.map(r => r.game.appid));
-  const underdogs = scored
-    .filter(r => r.game.quiz_popularity <= 6 && r.game.review_score >= 88 && !ids.has(r.game.appid))
-    .slice(0, 3);
   _referenceCache.clear();
-  return { top, underdogs };
+  return { top };
 }
 
 // ── Quiz engine ──────────────────────────────────────────────────────────────
@@ -548,18 +548,6 @@ const questions = [
       { value: 'irrelevant', label: 'Egal, ich will Gameplay' }
     ]
   },
-  {
-    id: 'popularity', type: 'single',
-    title: 'Mainstream oder Geheimtipp?',
-    hint: 'Wo soll der Empfehlungs-Mix liegen?',
-    options: [
-      { value: 'nische', label: 'Nische – die allermeisten kennen es nicht' },
-      { value: 'eher_unbekannt', label: 'Eher unbekannt' },
-      { value: 'ausgewogen', label: 'Ausgewogen' },
-      { value: 'beliebt', label: 'Beliebt' },
-      { value: 'mainstream', label: 'Mainstream – kennt jeder' }
-    ]
-  }
 ];
 
 const state = { current: 0, answers: {} };
@@ -673,8 +661,6 @@ async function renderResult() {
 
     // Call backend API
     const apiUrl = 'https://wgtp-production.up.railway.app/api/recommend';
-    const POP_MAP = { nische: 2, eher_unbekannt: 4, ausgewogen: 5, beliebt: 7, mainstream: 9 };
-    const popValue = POP_MAP[ans.popularity] !== undefined ? POP_MAP[ans.popularity] : 5;
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -689,7 +675,6 @@ async function renderResult() {
         session_length: ans.session_length || 'any',
         difficulty: ans.difficulty || 'any',
         story_importance: ans.story_importance || 'nice',
-        popularity: popValue
       })
     });
 
@@ -701,13 +686,10 @@ async function renderResult() {
     const apiResults = await response.json();
 
     // Convert API response to local format for rendering
-    const allGames = apiResults.results.map(r => ({
+    const top = apiResults.results.map(r => ({
       game: r,
       score: r.match_score
     }));
-
-    const top = allGames.filter(r => !r.game.is_hidden_gem).slice(0, 10);
-    const underdogs = allGames.filter(r => r.game.is_hidden_gem).slice(0, 3);
 
     function scoreCls(s) { return s >= 90 ? 'badge-score-high' : s >= 75 ? 'badge-score-mid' : 'badge-score-low'; }
     function priceBadge(g) {
@@ -716,24 +698,20 @@ async function renderResult() {
         : `<span class="badge badge-price">€${g.price_eur.toFixed(2)}</span>`;
     }
 
-    function cardHtml(item, rank, isGem) {
+    function cardHtml(item, rank) {
       const g = item.game;
-      const reasonTags = '';  // API doesn't return details; skip reasons for now
-      const rankStr = isGem ? '◆' : String(rank).padStart(2, '0');
-      return `<div class="game-card${isGem ? ' gem' : ''}">
+      return `<div class="game-card">
         <div class="card-top">
-          <div class="card-rank">${rankStr}</div>
+          <div class="card-rank">${String(rank).padStart(2, '0')}</div>
           <div class="card-main">
             <div class="card-name">${g.name}</div>
             <div class="card-badges">
               ${priceBadge(g)}
               <span class="badge ${scoreCls(g.review_score)}">${g.review_score}% ★</span>
-              ${isGem ? '<span class="badge badge-gem">Hidden Gem</span>' : ''}
             </div>
           </div>
         </div>
         <p class="card-desc">${g.description}</p>
-        ${reasonTags ? `<div class="card-reasons">${reasonTags}</div>` : ''}
         <a class="steam-link" href="${g.steam_url}?utm_source=wgtp" target="_blank" rel="noopener">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
             <path d="M2 10L10 2M10 2H4M10 2v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -743,13 +721,7 @@ async function renderResult() {
       </div>`;
     }
 
-    const topHtml = top.map((item, i) => cardHtml(item, i + 1, false)).join('');
-    const gemsHtml = underdogs.length
-      ? `<div class="gems-section">
-          <div class="section-label">Hidden Gems — verkannte Perlen</div>
-          ${underdogs.map(item => cardHtml(item, 0, true)).join('')}
-        </div>`
-      : '';
+    const topHtml = top.map((item, i) => cardHtml(item, i + 1)).join('');
 
     root.innerHTML = `
       <div class="results">
@@ -757,7 +729,6 @@ async function renderResult() {
         <p class="results-sub">Basierend auf deinen Antworten — sortiert nach Passgenauigkeit.</p>
         <div class="section-label">Top Empfehlungen</div>
         ${topHtml}
-        ${gemsHtml}
         <div class="results-footer">
           <button class="btn" id="restart">↻ Nochmal</button>
         </div>
