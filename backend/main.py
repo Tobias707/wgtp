@@ -113,6 +113,15 @@ ONLINE_PREFERENCE_PROFILE_TEXT = {
 
 ADULT_TAGS = {"sexual content", "nsfw", "adult only content", "hentai", "nudity"}
 
+# Core genres: must match exactly (hard filter)
+# Blend genres: soft penalty if no match
+CORE_GENRES = {'shooter', 'horror', 'roguelike', 'puzzle', 'simulation'}  # Strict matching required
+BLEND_GENRES = {'action', 'adventure', 'rpg', 'platformer', 'strategy', 'sandbox', 'sports'}
+
+# Simulation has problematic subgenres (e.g. "battle simulator" != cozy)
+# Only allow "real" simulation tags
+GOOD_SIMULATION_TAGS = {'farming sim', 'life sim', 'tycoon', 'management', 'economy', 'cooking', 'flight'}
+
 
 def get_genre_tag_set(genres: list) -> set:
     tags = set()
@@ -120,6 +129,16 @@ def get_genre_tag_set(genres: list) -> set:
         if g in GENRE_TAG_MAP:
             tags.update(GENRE_TAG_MAP[g])
     return tags
+
+
+def get_core_genres_from_list(genres: list) -> set:
+    """Return which genres from the list are CORE genres (strict matching)"""
+    return set(g for g in genres if g in CORE_GENRES)
+
+
+def get_blend_genres_from_list(genres: list) -> set:
+    """Return which genres from the list are BLEND genres (soft penalty)"""
+    return set(g for g in genres if g in BLEND_GENRES)
 
 
 def budget_to_float(budget_str: str) -> float:
@@ -213,6 +232,12 @@ def recommend(quiz: QuizRequest):
         disliked_set = set(g.lower() for g in quiz.disliked_games)
         loved_set = set(g.lower() for g in quiz.loved_games)
         user_genre_tags = get_genre_tag_set(quiz.genres)
+        user_core_genres = get_core_genres_from_list(quiz.genres)
+        user_blend_genres = get_blend_genres_from_list(quiz.genres)
+
+        debug_file = os.path.join(os.path.dirname(__file__), "..", "debug.log")
+        with open(debug_file, "a", encoding="utf-8") as f:
+            f.write(f"\nRequest: genres={quiz.genres}, core={user_core_genres}, blend={user_blend_genres}\n")
 
         scored_games = []
 
@@ -240,6 +265,34 @@ def recommend(quiz: QuizRequest):
                 if quiz.players not in game_players:
                     continue
 
+            # HARD FILTER: Core genres - check each core genre's requirement
+            if 'horror' in user_core_genres:
+                horror_tags = {'horror', 'survival horror', 'psychological horror'}
+                if not game_tags_lower_set.intersection(horror_tags):
+                    continue
+
+            if 'shooter' in user_core_genres:
+                shooter_tags = {'fps', 'first-person shooter', 'third-person shooter', 'hero shooter', "shoot 'em up", 'bullet hell', 'twin stick shooter'}
+                if not game_tags_lower_set.intersection(shooter_tags):
+                    continue
+
+            if 'roguelike' in user_core_genres:
+                roguelike_tags = {'rogue-like', 'rogue-lite', 'action roguelike', 'roguelite', 'roguelike'}
+                if not game_tags_lower_set.intersection(roguelike_tags):
+                    continue
+
+            if 'puzzle' in user_core_genres:
+                puzzle_tags = {'puzzle', 'logic', 'physics puzzle', 'point & click', 'hidden object', 'match 3', 'word game', 'escape room', 'sokoban', 'nonogram', 'tile-matching'}
+                if not game_tags_lower_set.intersection(puzzle_tags):
+                    continue
+
+            if 'simulation' in user_core_genres:
+                # Simulation: only allow "good" sim types (farming, tycoon, life, management, etc)
+                # Filters out "battle simulator", "physics simulator", etc
+                good_simulation_tags = {'farming sim', 'life sim', 'tycoon', 'management', 'economy', 'cooking'}
+                if not game_tags_lower_set.intersection(good_simulation_tags):
+                    continue
+
             # Get embedding similarity
             if "embedding" not in game:
                 continue
@@ -250,10 +303,15 @@ def recommend(quiz: QuizRequest):
             # Start with embedding similarity score
             score = similarity * 100
 
-            # Apply soft filters
-            # Genre mismatch: heavy penalty when user picked genres but game has none matching
-            if user_genre_tags:
-                if not game_tags_lower_set.intersection(user_genre_tags):
+            # Apply soft filters for BLEND genres (action, adventure, rpg, etc)
+            # Only penalize if user picked blend genres and game has no match
+            if user_blend_genres:
+                blend_genre_tags = set()
+                for g in user_blend_genres:
+                    if g in GENRE_TAG_MAP:
+                        blend_genre_tags.update(GENRE_TAG_MAP[g])
+
+                if blend_genre_tags and not game_tags_lower_set.intersection(blend_genre_tags):
                     score -= 80
 
             # Disliked games penalty
