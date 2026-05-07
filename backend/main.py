@@ -1,11 +1,15 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from models import QuizRequest, RecommendResponse, GameResult
+from models import QuizRequest, RecommendResponse, GameResult, FeedbackRequest
 import json
 import numpy as np
 from datetime import datetime
 import os
 from sentence_transformers import SentenceTransformer
+import httpx
+
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 
 app = FastAPI()
 
@@ -46,6 +50,14 @@ def load_games():
 @app.get("/health")
 def health():
     return {"status": "ok", "games_loaded": len(games_list) if games_list else 0}
+
+
+@app.post("/api/feedback")
+def feedback(req: FeedbackRequest, background_tasks: BackgroundTasks):
+    genre_bucket = ",".join(sorted(req.genres))
+    vote_int = 1 if req.vote == "up" else -1
+    background_tasks.add_task(_write_feedback, req.appid, genre_bucket, vote_int)
+    return {"ok": True}
 
 
 GENRE_TAG_MAP = {
@@ -162,6 +174,25 @@ def cosine_similarity(a, b):
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-8)
 
 
+def _write_feedback(appid: int, genre_bucket: str, vote: int):
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return
+    try:
+        with httpx.Client(timeout=5.0) as client:
+            client.post(
+                f"{SUPABASE_URL}/rest/v1/game_feedback",
+                headers={
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_KEY}",
+                    "Content-Type": "application/json",
+                    "Prefer": "return=minimal",
+                },
+                json={"appid": appid, "genre_bucket": genre_bucket, "vote": vote},
+            )
+    except Exception:
+        pass
+
+
 def build_user_profile_text(quiz: QuizRequest) -> str:
     genres_str = ", ".join(quiz.genres) if quiz.genres else "any genre"
     genre_expansions = " ".join(GENRE_PROFILE_TEXT[g] for g in quiz.genres if g in GENRE_PROFILE_TEXT)
@@ -193,7 +224,6 @@ def build_user_profile_text(quiz: QuizRequest) -> str:
         f"{difficulty_expansion}. "
         f"{story_expansion}. "
         f"{session_expansion}. "
-        f"{'hidden gem obscure unknown niche indie underground' if quiz.popularity <= 3 else 'popular mainstream blockbuster well-known famous' if quiz.popularity >= 7 else 'moderately popular'}. "
         f"Budget: {quiz.budget}. "
         f"Loved games: {loved_str}. "
         f"{loved_tag_anchor}"
@@ -325,51 +355,15 @@ def recommend(quiz: QuizRequest):
                 if not game_platforms.intersection(user_platforms):
                     score -= 70
 
-            # Check for hidden gem
-            is_hidden_gem = (
-                game.get("quiz_popularity", 10) <= 6 and
-                game.get("review_score", 0) >= 88
-            )
-
-            # Popularity preference penalty/boost
-            if quiz.popularity >= 7 and is_hidden_gem:
-                score -= 30  # user wants mainstream, penalize obscure gems
-            elif quiz.popularity <= 3 and not is_hidden_gem and game.get("quiz_popularity", 10) >= 8:
-                score -= 20  # user wants niche, penalize blockbusters
-
             scored_games.append({
                 "game": game,
                 "score": score,
                 "similarity": similarity,
-                "is_hidden_gem": is_hidden_gem
             })
 
         # Sort by score (descending)
         scored_games.sort(key=lambda x: x["score"], reverse=True)
-
-        # Get top 10-12, prioritizing hidden gems
-        top_games = []
-        hidden_gems_included = 0
-
-        for item in scored_games:
-            if len(top_games) >= 12:
-                break
-
-            # Include hidden gems earlier if we don't have 2-3 yet
-            if item["is_hidden_gem"]:
-                if hidden_gems_included < 3:
-                    top_games.append(item)
-                    hidden_gems_included += 1
-            else:
-                top_games.append(item)
-
-        # Fill remaining slots if needed
-        if len(top_games) < 10:
-            for item in scored_games:
-                if len(top_games) >= 10:
-                    break
-                if item not in top_games:
-                    top_games.append(item)
+        top_games = scored_games[:10]
 
         # Build response
         results = []
@@ -384,7 +378,6 @@ def recommend(quiz: QuizRequest):
                 review_score=game.get("review_score", 0),
                 is_free=game.get("is_free", False),
                 match_score=round(item["similarity"] * 100, 1),
-                is_hidden_gem=item["is_hidden_gem"]
             ))
 
         return RecommendResponse(
