@@ -660,7 +660,8 @@ async function renderResult() {
       ? ans.disliked_games.split(',').map(s => s.trim()).filter(Boolean) : [];
 
     // Call backend API
-    const apiUrl = 'https://wgtp-production.up.railway.app/api/recommend';
+    const API_BASE = 'https://wgtp-production.up.railway.app';
+    const apiUrl = `${API_BASE}/api/recommend`;
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -725,28 +726,26 @@ async function renderResult() {
       </div>`;
     }
 
-    const voteState = {};
+    const voteState = {}; // fresh per render — scoped here intentionally, not at module scope
 
     function sendFeedback(appid, vote) {
-      const feedbackUrl = 'https://wgtp-production.up.railway.app/api/feedback';
-      const genres = ans.genres || [];
-      fetch(feedbackUrl, {
+      fetch(`${API_BASE}/api/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appid, genres, vote }),
+        body: JSON.stringify({ appid, genres: ans.genres || [], vote }),
       }).catch(() => {});
     }
 
     function attachVoteListeners() {
-      document.querySelectorAll('.vote-btn').forEach(btn => {
+      root.querySelectorAll('.vote-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-          const appid = parseInt(btn.dataset.appid);
+          const appid = btn.dataset.appid;
           const direction = btn.classList.contains('up') ? 'up' : 'down';
           if (voteState[appid] === direction) return;
           voteState[appid] = direction;
-          const card = document.querySelector(`.game-card[data-appid="${appid}"]`);
-          const upBtn = document.querySelector(`.vote-btn.up[data-appid="${appid}"]`);
-          const downBtn = document.querySelector(`.vote-btn.down[data-appid="${appid}"]`);
+          const card = root.querySelector(`.game-card[data-appid="${appid}"]`);
+          const upBtn = root.querySelector(`.vote-btn.up[data-appid="${appid}"]`);
+          const downBtn = root.querySelector(`.vote-btn.down[data-appid="${appid}"]`);
           card.classList.remove('voted-up', 'voted-down');
           upBtn.classList.remove('active');
           downBtn.classList.remove('active');
