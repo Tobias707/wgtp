@@ -700,7 +700,7 @@ async function renderResult() {
 
     function cardHtml(item, rank) {
       const g = item.game;
-      return `<div class="game-card">
+      return `<div class="game-card" data-appid="${g.appid}">
         <div class="card-top">
           <div class="card-rank">${String(rank).padStart(2, '0')}</div>
           <div class="card-main">
@@ -709,6 +709,10 @@ async function renderResult() {
               ${priceBadge(g)}
               <span class="badge ${scoreCls(g.review_score)}">${g.review_score}% ★</span>
             </div>
+          </div>
+          <div class="vote-btns">
+            <button class="vote-btn up" data-appid="${g.appid}" title="Passt zu mir">👍</button>
+            <button class="vote-btn down" data-appid="${g.appid}" title="Passt nicht">👎</button>
           </div>
         </div>
         <p class="card-desc">${g.description}</p>
@@ -719,6 +723,43 @@ async function renderResult() {
           Auf Steam ansehen
         </a>
       </div>`;
+    }
+
+    const voteState = {};
+
+    function sendFeedback(appid, vote) {
+      const feedbackUrl = 'https://wgtp-production.up.railway.app/api/feedback';
+      const genres = ans.genres || [];
+      fetch(feedbackUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appid, genres, vote }),
+      }).catch(() => {});
+    }
+
+    function attachVoteListeners() {
+      document.querySelectorAll('.vote-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const appid = parseInt(btn.dataset.appid);
+          const direction = btn.classList.contains('up') ? 'up' : 'down';
+          if (voteState[appid] === direction) return;
+          voteState[appid] = direction;
+          const card = document.querySelector(`.game-card[data-appid="${appid}"]`);
+          const upBtn = document.querySelector(`.vote-btn.up[data-appid="${appid}"]`);
+          const downBtn = document.querySelector(`.vote-btn.down[data-appid="${appid}"]`);
+          card.classList.remove('voted-up', 'voted-down');
+          upBtn.classList.remove('active');
+          downBtn.classList.remove('active');
+          if (direction === 'up') {
+            card.classList.add('voted-up');
+            upBtn.classList.add('active');
+          } else {
+            card.classList.add('voted-down');
+            downBtn.classList.add('active');
+          }
+          sendFeedback(appid, direction);
+        });
+      });
     }
 
     const topHtml = top.map((item, i) => cardHtml(item, i + 1)).join('');
@@ -734,6 +775,7 @@ async function renderResult() {
         </div>
       </div>`;
 
+    attachVoteListeners();
     document.getElementById('restart').addEventListener('click', () => {
       state.current = 0; state.answers = {}; render();
     });
