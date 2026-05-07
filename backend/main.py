@@ -24,18 +24,16 @@ app.add_middleware(
 games_data = None
 games_list = None
 embedding_model = None
-games_by_name = {}  # lowercase name -> game dict for loved/disliked lookups
+games_by_name = {}
 
 @app.on_event("startup")
 def load_games():
     global games_data, games_list, embedding_model, games_by_name
     try:
-        # Load embedding model (same one used for preprocessing)
         print("Loading sentence-transformer model...")
         embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
         print("Model loaded")
 
-        # Load games data
         data_path = os.path.join(os.path.dirname(__file__), "..", "games_data.json")
         with open(data_path, "r", encoding="utf-8") as f:
             games_data = json.load(f)
@@ -50,14 +48,6 @@ def load_games():
 @app.get("/health")
 def health():
     return {"status": "ok", "games_loaded": len(games_list) if games_list else 0}
-
-
-@app.post("/api/feedback")
-def feedback(req: FeedbackRequest, background_tasks: BackgroundTasks):
-    genre_bucket = ",".join(sorted(req.genres))
-    vote_int = 1 if req.vote == "up" else -1
-    background_tasks.add_task(_write_feedback, req.appid, genre_bucket, vote_int)
-    return {"ok": True}
 
 
 GENRE_TAG_MAP = {
@@ -125,13 +115,9 @@ ONLINE_PREFERENCE_PROFILE_TEXT = {
 
 ADULT_TAGS = {"sexual content", "nsfw", "adult only content", "hentai", "nudity"}
 
-# Core genres: must match exactly (hard filter)
-# Blend genres: soft penalty if no match
-CORE_GENRES = {'shooter', 'horror', 'roguelike', 'puzzle', 'simulation'}  # Strict matching required
+CORE_GENRES = {'shooter', 'horror', 'roguelike', 'puzzle', 'simulation'}
 BLEND_GENRES = {'action', 'adventure', 'rpg', 'platformer', 'strategy', 'sandbox', 'sports'}
 
-# Simulation has problematic subgenres (e.g. "battle simulator" != cozy)
-# Only allow "real" simulation tags
 GOOD_SIMULATION_TAGS = {'farming sim', 'life sim', 'tycoon', 'management', 'economy', 'cooking', 'flight'}
 
 
@@ -144,17 +130,14 @@ def get_genre_tag_set(genres: list) -> set:
 
 
 def get_core_genres_from_list(genres: list) -> set:
-    """Return which genres from the list are CORE genres (strict matching)"""
     return set(g for g in genres if g in CORE_GENRES)
 
 
 def get_blend_genres_from_list(genres: list) -> set:
-    """Return which genres from the list are BLEND genres (soft penalty)"""
     return set(g for g in genres if g in BLEND_GENRES)
 
 
 def budget_to_float(budget_str: str) -> float:
-    """Convert budget string to float EUR"""
     if budget_str == "free":
         return 0.0
     elif budget_str == "<5":
@@ -164,11 +147,10 @@ def budget_to_float(budget_str: str) -> float:
     elif budget_str == "<30":
         return 30.0
     else:
-        return 999999.0  # "any" or other = unlimited
+        return 999999.0
 
 
 def cosine_similarity(a, b):
-    """Compute cosine similarity between two vectors"""
     a = np.array(a)
     b = np.array(b)
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-8)
@@ -189,8 +171,47 @@ def _write_feedback(appid: int, genre_bucket: str, vote: int):
                 },
                 json={"appid": appid, "genre_bucket": genre_bucket, "vote": vote},
             )
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[feedback] Supabase write failed: {e}")
+
+
+def fetch_votes(appids: list, genre_bucket: str) -> dict:
+    """Returns {appid: net_votes} for the given appids and genre_bucket."""
+    if not SUPABASE_URL or not SUPABASE_KEY or not appids or not genre_bucket:
+        return {}
+    try:
+        appid_list = ",".join(str(a) for a in appids)
+        url = (
+            f"{SUPABASE_URL}/rest/v1/game_feedback"
+            f"?appid=in.({appid_list})"
+            f"&genre_bucket=eq.{genre_bucket}"
+            f"&select=appid,vote"
+        )
+        with httpx.Client(timeout=3.0) as client:
+            resp = client.get(url, headers={
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}",
+            })
+        if resp.status_code != 200:
+            return {}
+        net_votes: dict = {}
+        for row in resp.json():
+            aid = row["appid"]
+            net_votes[aid] = net_votes.get(aid, 0) + row["vote"]
+        return net_votes
+    except Exception as e:
+        print(f"[feedback] Supabase read failed: {e}")
+        return {}
+
+
+@app.post("/api/feedback")
+def feedback(req: FeedbackRequest, background_tasks: BackgroundTasks):
+    if not req.genres:
+        return {"ok": True}
+    genre_bucket = ",".join(sorted(req.genres))
+    vote_int = 1 if req.vote == "up" else -1
+    background_tasks.add_task(_write_feedback, req.appid, genre_bucket, vote_int)
+    return {"ok": True}
 
 
 def build_user_profile_text(quiz: QuizRequest) -> str:
@@ -199,7 +220,6 @@ def build_user_profile_text(quiz: QuizRequest) -> str:
     loved_str = ", ".join(quiz.loved_games) if quiz.loved_games else "none"
     disliked_str = ", ".join(quiz.disliked_games) if quiz.disliked_games else "none"
 
-    # Inject actual tags from loved games so embedding anchors toward their vocabulary
     loved_tag_words = []
     for game_name in quiz.loved_games:
         match = games_by_name.get(game_name.lower())
@@ -207,7 +227,7 @@ def build_user_profile_text(quiz: QuizRequest) -> str:
             loved_tag_words.extend(match.get("steam_tags", [])[:10])
     loved_tag_anchor = ""
     if loved_tag_words:
-        unique_tags = list(dict.fromkeys(loved_tag_words))  # dedupe, preserve order
+        unique_tags = list(dict.fromkeys(loved_tag_words))
         loved_tag_anchor = f"Similar to games tagged: {', '.join(unique_tags)}. "
 
     difficulty_expansion = DIFFICULTY_PROFILE_TEXT.get(quiz.difficulty, quiz.difficulty)
@@ -239,13 +259,9 @@ def recommend(quiz: QuizRequest):
         raise HTTPException(status_code=503, detail="Games data not loaded")
 
     try:
-        # Build user profile text
         user_text = build_user_profile_text(quiz)
-
-        # Embed user profile using sentence-transformer
         user_embedding = embedding_model.encode(user_text, convert_to_numpy=True)
 
-        # Blend in loved game embeddings — pulls user vector toward known preferences
         loved_vecs = []
         for game_name in quiz.loved_games:
             match = games_by_name.get(game_name.lower())
@@ -261,7 +277,6 @@ def recommend(quiz: QuizRequest):
         budget_max = budget_to_float(quiz.budget)
         disliked_set = set(g.lower() for g in quiz.disliked_games)
         loved_set = set(g.lower() for g in quiz.loved_games)
-        user_genre_tags = get_genre_tag_set(quiz.genres)
         user_core_genres = get_core_genres_from_list(quiz.genres)
         user_blend_genres = get_blend_genres_from_list(quiz.genres)
 
@@ -272,30 +287,22 @@ def recommend(quiz: QuizRequest):
         scored_games = []
 
         for game in games_list:
-            # Hard filter: budget
             if game.get("price_eur", 0) > budget_max:
                 continue
-
-            # Hard filter: minimum review quality
             if game.get("review_score", 0) < 75:
                 continue
 
-            # Hard filter: adult content
             game_tags_lower_set = {t.lower() for t in game.get("steam_tags", [])}
             if game_tags_lower_set.intersection(ADULT_TAGS):
                 continue
-
-            # Hard filter: exclude loved games from results (user already knows them)
             if game["name"].lower() in loved_set:
                 continue
 
-            # Hard filter: players preference (e.g. solo user should not get multiplayer games)
             if quiz.players != "any":
                 game_players = game.get("quiz_players", [])
                 if quiz.players not in game_players:
                     continue
 
-            # HARD FILTER: Core genres - check each core genre's requirement
             if 'horror' in user_core_genres:
                 horror_tags = {'horror', 'survival horror', 'psychological horror'}
                 if not game_tags_lower_set.intersection(horror_tags):
@@ -317,38 +324,28 @@ def recommend(quiz: QuizRequest):
                     continue
 
             if 'simulation' in user_core_genres:
-                # Simulation: only allow "good" sim types (farming, tycoon, life, management, etc)
-                # Filters out "battle simulator", "physics simulator", etc
                 good_simulation_tags = {'farming sim', 'life sim', 'tycoon', 'management', 'economy', 'cooking'}
                 if not game_tags_lower_set.intersection(good_simulation_tags):
                     continue
 
-            # Get embedding similarity
             if "embedding" not in game:
                 continue
 
             game_embedding = game["embedding"]
             similarity = cosine_similarity(user_embedding, game_embedding)
-
-            # Start with embedding similarity score
             score = similarity * 100
 
-            # Apply soft filters for BLEND genres (action, adventure, rpg, etc)
-            # Only penalize if user picked blend genres and game has no match
             if user_blend_genres:
                 blend_genre_tags = set()
                 for g in user_blend_genres:
                     if g in GENRE_TAG_MAP:
                         blend_genre_tags.update(GENRE_TAG_MAP[g])
-
                 if blend_genre_tags and not game_tags_lower_set.intersection(blend_genre_tags):
                     score -= 80
 
-            # Disliked games penalty
             if game["name"].lower() in disliked_set:
                 score -= 100
 
-            # Platform mismatch penalty
             game_platforms = set(game.get("platforms", []))
             user_platforms = set(quiz.platforms)
             if user_platforms and game_platforms:
@@ -361,13 +358,19 @@ def recommend(quiz: QuizRequest):
                 "similarity": similarity,
             })
 
-        # Sort by score (descending)
-        scored_games.sort(key=lambda x: x["score"], reverse=True)
-        top_games = scored_games[:10]
+        # Apply community feedback adjustment (capped at ±12 pts)
+        if scored_games and quiz.genres:
+            user_genre_bucket = ",".join(sorted(quiz.genres))
+            candidate_appids = [item["game"]["appid"] for item in scored_games]
+            net_votes_map = fetch_votes(candidate_appids, user_genre_bucket)
+            for item in scored_games:
+                net = net_votes_map.get(item["game"]["appid"], 0)
+                item["score"] += max(-12, min(12, net * 2))
 
-        # Build response
+        scored_games.sort(key=lambda x: x["score"], reverse=True)
+
         results = []
-        for item in top_games[:10]:  # Return exactly top 10
+        for item in scored_games[:10]:
             game = item["game"]
             results.append(GameResult(
                 appid=game["appid"],
