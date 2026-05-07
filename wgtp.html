@@ -79,7 +79,7 @@
   .options.two-col { grid-template-columns: repeat(2,1fr); }
   @media (max-width: 480px) { .options.two-col { grid-template-columns: 1fr; } }
 
-  .option { background: var(--bg-card); border: 1px solid var(--border); color: var(--text); padding: 16px 20px; cursor: pointer; text-align: left; font: inherit; font-size: 15px; transition: all 0.18s ease; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .option { background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); padding: 16px 20px; cursor: pointer; text-align: left; font: inherit; font-size: 15px; transition: all 0.18s ease; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .option:hover { border-color: var(--border-strong); background: var(--bg-elevated); transform: translateX(2px); }
   .option.selected { border-color: var(--accent); background: var(--accent-dim); }
   .option .check { width: 16px; height: 16px; border: 1px solid var(--border-strong); border-radius: 50%; flex-shrink: 0; position: relative; transition: all 0.18s ease; }
@@ -88,11 +88,11 @@
   .option.multi .check { border-radius: 3px; }
   .option.multi.selected .check::after { inset: 0; background: transparent; border: solid var(--bg); border-width: 0 2px 2px 0; transform: rotate(45deg) translate(-1px,-2px); width: 5px; height: 9px; border-radius: 0; top: 2px; left: 5px; }
 
-  .textbox { width: 100%; background: var(--bg-card); border: 1px solid var(--border); color: var(--text); padding: 16px 20px; font: inherit; font-size: 15px; min-height: 110px; resize: vertical; transition: border-color 0.18s ease; }
+  .textbox { width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); padding: 16px 20px; font: inherit; font-size: 15px; min-height: 110px; resize: vertical; transition: border-color 0.18s ease; }
   .textbox:focus { outline: none; border-color: var(--accent); }
   .textbox::placeholder { color: var(--text-dim); }
 
-  .slider-wrap { background: var(--bg-card); border: 1px solid var(--border); padding: 32px 24px 24px; }
+  .slider-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; padding: 32px 24px 24px; }
   .slider-labels { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: 20px; }
   .slider-value { text-align: center; font-family: 'Instrument Serif', serif; font-size: 32px; color: var(--accent); margin-bottom: 16px; font-style: italic; }
   input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 2px; background: var(--border-strong); outline: none; }
@@ -100,7 +100,7 @@
   input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; background: var(--accent); cursor: pointer; border-radius: 50%; border: 3px solid var(--bg); box-shadow: 0 0 0 1px var(--accent); }
 
   .nav { display: flex; justify-content: space-between; align-items: center; margin-top: 40px; gap: 12px; }
-  .btn { background: transparent; border: 1px solid var(--border-strong); color: var(--text); padding: 14px 28px; cursor: pointer; font: inherit; font-size: 14px; letter-spacing: 0.02em; transition: all 0.18s ease; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; }
+  .btn { background: transparent; border: 1px solid var(--border-strong); border-radius: 4px; color: var(--text); padding: 14px 28px; cursor: pointer; font: inherit; font-size: 14px; letter-spacing: 0.02em; transition: all 0.18s ease; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; }
   .btn:hover:not(:disabled) { border-color: var(--text); background: var(--bg-elevated); }
   .btn:disabled { opacity: 0.3; cursor: not-allowed; }
   .btn-primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
@@ -117,7 +117,7 @@
   .section-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
   .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-  .game-card { background: var(--bg-card); border: 1px solid var(--border); padding: 24px; margin-bottom: 10px; transition: border-color 0.18s ease; }
+  .game-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; padding: 24px; margin-bottom: 10px; transition: border-color 0.18s ease; }
   .game-card:hover { border-color: var(--border-strong); }
   .game-card.gem { border-color: rgba(167,139,250,0.2); }
   .game-card.gem:hover { border-color: var(--gem); }
@@ -128,7 +128,7 @@
   .card-name { font-family: 'Instrument Serif', serif; font-size: 22px; font-weight: 400; line-height: 1.2; margin-bottom: 8px; }
   .card-badges { display: flex; flex-wrap: wrap; gap: 6px; }
 
-  .badge { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.05em; padding: 3px 8px; border: 1px solid; white-space: nowrap; }
+  .badge { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.05em; padding: 3px 8px; border: 1px solid; border-radius: 4px; white-space: nowrap; }
   .badge-score-high { color: var(--accent); border-color: rgba(194,255,61,0.3); background: var(--accent-dim); }
   .badge-score-mid { color: #fbbf24; border-color: rgba(251,191,36,0.25); background: rgba(251,191,36,0.07); }
   .badge-score-low { color: var(--text-muted); border-color: var(--border); }
@@ -138,7 +138,7 @@
 
   .card-desc { color: var(--text-muted); font-size: 14px; line-height: 1.65; margin-bottom: 12px; }
   .card-reasons { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
-  .reason-tag { font-size: 12px; color: var(--text-dim); background: var(--bg-elevated); border: 1px solid var(--border); padding: 3px 10px; font-family: 'JetBrains Mono', monospace; }
+  .reason-tag { font-size: 12px; color: var(--text-dim); background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 4px; padding: 3px 10px; font-family: 'JetBrains Mono', monospace; }
 
   .steam-link { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); text-decoration: none; border-bottom: 1px solid var(--border); padding-bottom: 1px; transition: color 0.18s, border-color 0.18s; }
   .steam-link:hover { color: var(--accent); border-color: var(--accent); }
@@ -164,7 +164,7 @@
   <header>
     <div class="brand">
       <span class="brand-mark">What Game To Play</span>
-      <h1>Find your <em>next obsession</em>.</h1>
+      <h1>Find your <em>next game</em>.</h1>
       <p class="subtitle">10 Fragen. Kein Bullshit. Spiele, die wirklich zu dir passen.</p>
     </div>
   </header>
