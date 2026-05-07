@@ -14,7 +14,12 @@ class QuizRequest(BaseModel):
     session_length: str
     difficulty: str
     story_importance: str
-    popularity: int
+
+
+class FeedbackRequest(BaseModel):
+    appid: int
+    genres: List[str]
+    vote: str  # "up" or "down"
 
 
 class GameResult(BaseModel):
@@ -26,7 +31,6 @@ class GameResult(BaseModel):
     review_score: int
     is_free: bool
     match_score: float
-    is_hidden_gem: bool
 
 
 class RecommendResponse(BaseModel):
